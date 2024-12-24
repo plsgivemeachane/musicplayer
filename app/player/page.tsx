@@ -126,9 +126,9 @@ export default function FullScreenPlayer() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-grow flex flex-col z-20">
+      <div className="flex-grow flex flex-col z-20 overflow-scroll">
         {/* Album Art */}
-        <div className="flex-grow flex items-center justify-center p-8">
+        <div className="flex items-center justify-center mt-20">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
