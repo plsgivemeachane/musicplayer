@@ -21,15 +21,15 @@ export default function Navigation() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md border-t border-neutral-800 z-[1000]">
       <div className="flex justify-between items-center px-6 py-3">
-        <Link href="/" className="flex flex-col items-center text-neutral-400 hover:text-white">
+        <Link prefetch={true} href="/" className="flex flex-col items-center text-neutral-400 hover:text-white">
           <FaHome className="text-xl" />
           <span className="text-xs mt-1">Nhà</span>
         </Link>
-        <Link href="/library" className="flex flex-col items-center text-neutral-400 hover:text-white">
+        <Link prefetch={true} href="/library" className="flex flex-col items-center text-neutral-400 hover:text-white">
           <FaMusic className="text-xl" />
           <span className="text-xs mt-1">Thư viện</span>
         </Link>
-        <Link href="/playlist?playlistId=favorites" className="flex flex-col items-center text-neutral-400 hover:text-white">
+        <Link prefetch={true} href="/playlist?playlistId=favorites" className="flex flex-col items-center text-neutral-400 hover:text-white">
           <FaHeart className="text-xl" />
           <span className="text-xs mt-1">Yêu thích</span>
         </Link>

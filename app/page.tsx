@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { usePlayer } from './context/PlayerContext';
 import MediaPlayer from "./components/MediaPlayer";
 import Navigation from "./components/Navigation";
+import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -129,6 +130,18 @@ export default function Home() {
     }
   }
 
+  const getImageForPlaylist = (playlist: Playlist) => {
+
+    if (playlist.songs.length == 0) {
+      // return example image 
+      return "https://picsum.photos/64/64?random=" + playlist.id
+    }
+
+    // Get random image from playlist'songs art
+    const randomIndex = Math.floor(Math.random() * playlist.songs.length);
+    return playlist.songs[randomIndex].albumArt??"";
+  }
+
   return (
     <div className="bg-black text-white min-h-screen p-4">
       {/* Main Content */}
@@ -144,6 +157,7 @@ export default function Home() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onMouseEnter={() => router.prefetch(`/search`)}
                 className="bg-neutral-800 text-white px-4 py-2 pl-10 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <FaSearch 
@@ -154,11 +168,11 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Playlists Grid */}
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold">{getGreeting()} {user?.firstName}</h2>
           <button 
-            onClick={createNewPlaylist}
+            // onClick={createNewPlaylist}
+            onClick={() => alert("You just found a underdeveloped feature!")}
             className="bg-green-500 text-black p-2 rounded-full hover:bg-green-600"
           >
             <FaPlus />
@@ -172,9 +186,14 @@ export default function Home() {
               key={playlist.id} 
               className="bg-neutral-800 p-4 rounded-lg flex items-center space-x-4 hover:bg-neutral-700 cursor-pointer"
               onClick={() => router.push(`/playlist?playlistId=${playlist.id}`)}
+              onMouseEnter={() => {
+                router.prefetch(`/playlist?playlistId=${playlist.id}`, {
+                  kind: PrefetchKind.FULL
+                })
+              }}
             >
               <Image 
-                src={`https://picsum.photos/64/64?random=${index + 1}`} 
+                src={getImageForPlaylist(playlist)} 
                 alt={playlist.name}
                 width={64}
                 height={64}

@@ -38,7 +38,7 @@ function Playlist() {
   const searchParams = useSearchParams();
   const playlistId = searchParams.get('playlistId');
   const { playSong } = usePlayer();
-  const { addToQueue, clearQueue } = useQueue();
+  const { addToQueue } = useQueue();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
@@ -75,8 +75,7 @@ function Playlist() {
 
   const handlePlayAll = () => {
     if (playlist && playlist.songs.length > 0) {
-      // Clear existing queue and add all songs from the playlist
-      clearQueue();
+      // Add all songs from the playlist
       addToQueue(playlist.songs);
       
       // Play the first song
@@ -114,6 +113,19 @@ function Playlist() {
 
     // Update state
     setPlaylist(updatedPlaylist);
+  };
+
+  const handlePlaySongFromPlaylist = (song: Song) => {
+    if (playlist && playlist.songs.length > 0) {
+      // Add all songs from the playlist
+      addToQueue(playlist.songs);
+      
+      // Play the selected song
+      playSong(song);
+    } else {
+      // If no playlist, just play the song
+      playSong(song);
+    }
   };
 
   if (!isLoaded || !isSignedIn) {
@@ -185,7 +197,7 @@ function Playlist() {
                   </button>
                   <button 
                     className="text-neutral-400 hover:text-green-500"
-                    onClick={() => playSong(song)}
+                    onClick={() => handlePlaySongFromPlaylist(song)}
                     title="Play"
                   >
                     <FaPlay />

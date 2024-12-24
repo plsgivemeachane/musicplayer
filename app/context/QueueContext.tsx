@@ -11,7 +11,6 @@ interface QueueContextType {
   isShuffling: boolean;
   addToQueue: (songs: Song[]) => void;
   removeFromQueue: (index: number) => void;
-  clearQueue: () => void;
   nextSong: () => Song | null;
   prevSong: () => Song | null;
   setLooping: (loop: boolean) => void;
@@ -29,19 +28,23 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   const [isShuffling, setIsShuffling] = useState(false);
 
   const addToQueue = useCallback((songs: Song[]) => {
-    setQueue(prevQueue => {
-      // Remove duplicates while preserving order
-      const uniqueSongs = songs.filter(
-        song => !prevQueue.some(qSong => qSong.id === song.id)
-      );
-      return [...prevQueue, ...uniqueSongs];
-    });
+    // Clear the existing queue before adding new songs
+    setQueue([]);
+    setCurrentIndex(-1);
 
-    // If no song is currently playing, start with the first song
-    if (currentIndex === -1 && songs.length > 0) {
+    // Add unique songs
+    const uniqueSongs = songs.filter(
+      (song, index, self) => 
+        self.findIndex(s => s.id === song.id) === index
+    );
+
+    setQueue(uniqueSongs);
+
+    // If songs exist, start playing from the first song
+    if (uniqueSongs.length > 0) {
       setCurrentIndex(0);
     }
-  }, [currentIndex]);
+  }, []);
 
   const removeFromQueue = useCallback((index: number) => {
     setQueue(prevQueue => prevQueue.filter((_, i) => i !== index));
@@ -106,7 +109,6 @@ export function QueueProvider({ children }: { children: ReactNode }) {
         isShuffling,
         addToQueue, 
         removeFromQueue, 
-        clearQueue,
         nextSong,
         prevSong,
         setLooping,

@@ -74,6 +74,8 @@ export default function MediaPlayer() {
       initial={{ scale: 0 }} 
       animate={{ scale: 1 }} 
       className="fixed bottom-20 left-10 right-10 bg-black/80 backdrop-blur-md rounded-xl p-4 z-40"
+      whileHover={{ scale: 1.05 }}
+      onMouseEnter={() => router.prefetch('/player')}
       onClick={() => router.push('/player')}
     >
       <audio ref={audioRef} />

@@ -119,10 +119,7 @@ function Search() {
       duration: result.duration
     };
 
-    // Play the first song and add all songs to queue
-    playSong(song);
-    
-    // Convert all search results to songs for queue
+    // Add all search results to queue
     const queueSongs: Song[] = searchResults.map(r => ({
       id: r.videoId,
       title: r.name,
@@ -133,6 +130,9 @@ function Search() {
     }));
 
     addToQueue(queueSongs);
+    
+    // Play the selected song
+    playSong(song);
   };
 
   const handleFavoriteToggle = (result: SearchResult) => {
@@ -171,13 +171,13 @@ function Search() {
     return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   };
 
-  if (isLoading) {
-    return (
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black text-white min-h-screen flex items-center justify-center">
-        <p>Đang tải...</p>
-      </motion.div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black text-white min-h-screen flex items-center justify-center">
+  //       <p>Đang tải...</p>
+  //     </motion.div>
+  //   );
+  // }
 
   if (error) {
     return (
@@ -213,7 +213,35 @@ function Search() {
         </div>
 
         {/* Search Results */}
-        {searchResults.length > 0 && (
+        {isLoading ? (
+          <div className="space-y-2">
+            {[...Array(7).keys()].map((i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: i * 0.1 }}
+                className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4"
+              >
+                <div className="bg-neutral-800 rounded-md h-12 w-12"></div>
+                <div className="flex-grow overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 0.3, delay: i * 0.1 }}
+                    className="bg-neutral-800 rounded-md h-6"
+                  ></motion.div>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 0.3, delay: i * 0.1 + 0.2 }}
+                    className="bg-neutral-800 rounded-md h-4 mt-2"
+                  ></motion.div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (searchResults.length > 0 && (
           <div className="space-y-2">
             {searchResults.map((result) => (
               <div 
@@ -248,12 +276,7 @@ function Search() {
               </div>
             ))}
           </div>
-        )}
-        {searchResults.length === 0 && (
-          <div className="text-center text-neutral-400 mt-16">
-            <p>Không tìm thấy "{queryParam}"</p>
-          </div>
-        )}
+        ))}
       </div>
 
       {/* Media Player */}

@@ -27,7 +27,6 @@ export default function FullScreenPlayer() {
     setLooping, 
     setShuffling,
     removeFromQueue,
-    clearQueue,
     addToQueue
   } = useQueue();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
@@ -230,13 +229,6 @@ export default function FullScreenPlayer() {
           >
             <div className="flex justify-between items-center p-4 border-b border-neutral-800">
               <h2 className="text-xl font-bold text-white">Hàng đợi</h2>
-              <button 
-                onClick={clearQueue}
-                className="text-red-400 hover:text-red-300 flex items-center space-x-2"
-              >
-                <FaTrash />
-                <span className="text-sm">Xóa</span>
-              </button>
             </div>
             <div className="overflow-y-auto h-[calc(100%-60px)] pb-16">
               {queue.map((song, index) => (
@@ -248,7 +240,6 @@ export default function FullScreenPlayer() {
                     currentSong.id === song.id ? 'bg-neutral-800' : ''
                   }`}
                   onClick={() => {
-                    clearQueue();
                     addToQueue([song]);
                     playSong(song);
                     setShowQueue(false);

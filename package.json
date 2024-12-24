@@ -16,7 +16,8 @@
     "pocketbase": "^0.24.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-icons": "^5.4.0"
+    "react-icons": "^5.4.0",
+    "react-in-viewport": "^1.0.0-beta.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
