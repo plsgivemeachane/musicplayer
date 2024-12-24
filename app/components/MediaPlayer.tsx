@@ -73,7 +73,7 @@ export default function MediaPlayer() {
     <motion.div 
       initial={{ scale: 0 }} 
       animate={{ scale: 1 }} 
-      className="fixed bottom-20 left-10 right-10 bg-black/80 backdrop-blur-md rounded-xl p-4 z-40"
+      className="fixed bottom-20 left-4 sm:left-12 right-4 sm:right-12 bg-black/80 backdrop-blur-md rounded-xl sm:p-4 z-40"
       whileHover={{ scale: 1.05 }}
       onMouseEnter={() => router.prefetch('/player')}
       onClick={() => router.push('/player')}
@@ -107,7 +107,7 @@ export default function MediaPlayer() {
               e.stopPropagation();
               prevSong();
             }}
-            className="text-neutral-400 hover:text-white"
+            className="text-neutral-400 hover:text-white hidden sm:block"
           >
             <FaStepBackward size={20} />
           </button>
@@ -125,7 +125,7 @@ export default function MediaPlayer() {
               e.stopPropagation();
               nextSong();
             }}
-            className="text-neutral-400 hover:text-white"
+            className="text-neutral-400 hover:text-white  hidden sm:block"
           >
             <FaStepForward size={20} />
           </button>

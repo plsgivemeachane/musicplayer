@@ -138,8 +138,8 @@ export default function Home() {
     }
 
     // Get random image from playlist'songs art
-    const randomIndex = Math.floor(Math.random() * playlist.songs.length);
-    return playlist.songs[randomIndex].albumArt??"";
+    // const randomIndex = Math.floor(Math.random() * playlist.songs.length);
+    return playlist.songs[0].albumArt??"";
   }
 
   return (

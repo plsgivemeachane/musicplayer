@@ -9,7 +9,7 @@ import { useQueue } from '../context/QueueContext';
 import { useRouter } from 'next/navigation';
 import MediaPlayer from '../components/MediaPlayer';
 import Navigation from '../components/Navigation';
-import { motion } from "framer-motion"
+import { motion } from "motion/react"
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
 
