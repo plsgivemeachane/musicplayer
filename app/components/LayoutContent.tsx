@@ -1,35 +1,35 @@
 'use client'
 
 import type { ReactNode } from 'react';
-import localFont from 'next/font/local';
+import { Roboto, Roboto_Mono } from "next/font/google";
 import { usePlayer } from "../context/PlayerContext";
 import MediaPlayer from "./MediaPlayer";
 import Navigation from "./Navigation";
 
-const geistSans = localFont({
-  src: '../../public/fonts/GeistVF.woff2',
-  variable: '--font-geist-sans'
+const roboto = Roboto({
+  weight: ['400', '700'],
+  style: ['normal'],
+  subsets: ['latin'],
+  variable: '--font-roboto'
 });
 
-const geistMono = localFont({
-  src: '../../public/fonts/GeistMonoVF.woff2',
-  variable: '--font-geist-mono'
+const robotoMono = Roboto_Mono({
+  weight: ['400', '700'],
+  style: ['normal'],
+  subsets: ['latin'],
+  variable: '--font-roboto-mono'
 });
 
 function LayoutContent({ children }: { children: ReactNode }) {
   const { currentSong } = usePlayer();
 
   return (
-    <div className={`${geistSans.variable} ${geistMono.variable} font-sans flex flex-col min-h-screen pb-32`}>
+    <div className={`${roboto.variable} ${robotoMono.variable} font-sans flex flex-col min-h-screen pb-32`}>
       <main className="flex-grow">
         {children}
       </main>
-
-      {/* Conditionally render Media Player */}
-      {currentSong && <MediaPlayer />}
-
-      {/* Navigation */}
       <Navigation />
+      {currentSong && <MediaPlayer />}
     </div>
   );
 }

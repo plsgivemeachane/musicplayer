@@ -8,7 +8,7 @@ import { usePlayer } from './context/PlayerContext';
 import MediaPlayer from "./components/MediaPlayer";
 import Navigation from "./components/Navigation";
 
-const BASE_URL = 'http://server.elainateam.io:7860';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface Song {
   id: string;
@@ -121,11 +121,11 @@ export default function Home() {
     const hour = new Date().getHours();
 
     if (hour < 12) {
-      return 'Good morning';
+      return 'Chào buổi sáng';
     } else if (hour < 18) {
-      return 'Good afternoon';
+      return 'Chào buổi chiều';
     } else {
-      return 'Good evening';
+      return 'Chào buổi tối';
     }
   }
 
@@ -140,7 +140,7 @@ export default function Home() {
             <div className="relative w-full">
               <input 
                 type="text" 
-                placeholder="Search" 
+                placeholder="Tìm kiếm" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -182,7 +182,7 @@ export default function Home() {
               />
               <div>
                 <h3 className="font-semibold">{playlist.name}</h3>
-                <p className="text-neutral-400 text-sm">{playlist.songs.length} songs</p>
+                <p className="text-neutral-400 text-sm">{playlist.songs.length} bài</p>
               </div>
             </div>
           ))}

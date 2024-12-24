@@ -229,13 +229,13 @@ export default function FullScreenPlayer() {
             className="fixed bottom-0 left-0 right-0 bg-neutral-900 rounded-t-2xl h-[70%] z-40 overflow-hidden"
           >
             <div className="flex justify-between items-center p-4 border-b border-neutral-800">
-              <h2 className="text-xl font-bold text-white">Queue</h2>
+              <h2 className="text-xl font-bold text-white">Hàng đợi</h2>
               <button 
                 onClick={clearQueue}
                 className="text-red-400 hover:text-red-300 flex items-center space-x-2"
               >
                 <FaTrash />
-                <span className="text-sm">Clear</span>
+                <span className="text-sm">Xóa</span>
               </button>
             </div>
             <div className="overflow-y-auto h-[calc(100%-60px)] pb-16">

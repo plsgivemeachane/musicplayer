@@ -1,7 +1,7 @@
 'use client'
 
 import Image from "next/image";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { FaPlay, FaPause, FaHeart, FaPlus, FaSearch, FaRegHeart } from 'react-icons/fa';
 import { useSearchParams } from 'next/navigation';
 import { usePlayer } from "../context/PlayerContext";
@@ -13,7 +13,7 @@ import { motion } from "framer-motion"
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
 
-const BASE_URL = 'http://server.elainateam.io:7860';
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface SearchResult {
   type: string;
@@ -36,6 +36,14 @@ interface SearchResult {
 }
 
 export default function SearchPage() {
+  return (
+    <Suspense fallback={<div>Chờ...</div>}>
+      <Search />
+    </Suspense>
+  );
+}
+
+function Search() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [query, setQuery] = useState('');
   const [nestedSearchQuery, setNestedSearchQuery] = useState('');
@@ -166,7 +174,7 @@ export default function SearchPage() {
   if (isLoading) {
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black text-white min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+        <p>Đang tải...</p>
       </motion.div>
     );
   }
@@ -174,7 +182,7 @@ export default function SearchPage() {
   if (error) {
     return (
       <div className="bg-black text-white min-h-screen p-4">
-        <p className="text-red-500">Error: {error}</p>
+        <p className="text-red-500">Lỗi!: {error}</p>
       </div>
     );
   }
@@ -214,7 +222,7 @@ export default function SearchPage() {
               >
                 <Image 
                   src={result.thumbnails[0]?.url || '/placeholder-album.jpg'}
-                  alt={result.name}
+                  alt={"Lỗi ảnh"}
                   width={48}
                   height={48}
                   className="rounded-md object-cover"
@@ -243,7 +251,7 @@ export default function SearchPage() {
         )}
         {searchResults.length === 0 && (
           <div className="text-center text-neutral-400 mt-16">
-            <p>No results found for "{queryParam}"</p>
+            <p>Không tìm thấy "{queryParam}"</p>
           </div>
         )}
       </div>

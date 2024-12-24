@@ -5,21 +5,22 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 });
 
 const nextConfig: NextConfig = withPWA({
+  dest:'public',
+  register:true ,
+  skipWaiting:true,
   reactStrictMode: false,
   /* config options here */
   images: {
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "**",
       },
     ],
-    domains: [
-      'lh3.googleusercontent.com',
-      'via.placeholder.com'
-    ]
+
+  },
+  experimental: {
+    missingSuspenseWithCSRBailout: false,
   },
 });
 

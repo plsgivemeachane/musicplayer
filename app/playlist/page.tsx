@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { FaPlay, FaPause, FaPlus, FaHeart, FaMusic, FaTrash } from 'react-icons/fa';
 import { useUser } from '@clerk/nextjs';
@@ -26,6 +26,14 @@ interface Playlist {
 }
 
 export default function PlaylistPage() {
+  return (
+    <Suspense fallback={<div>Chờ...</div>}>
+      <Playlist />
+    </Suspense>
+  );
+}
+
+function Playlist() {
   const { isLoaded, isSignedIn, user } = useUser();
   const searchParams = useSearchParams();
   const playlistId = searchParams.get('playlistId');
@@ -131,7 +139,7 @@ export default function PlaylistPage() {
               className="bg-green-500 text-black p-2 rounded-full hover:bg-green-600 flex items-center space-x-2"
             >
               <FaPlay />
-              <span>Play All</span>
+              <span>Phát</span>
             </button>
           )}
         </div>
@@ -201,7 +209,7 @@ export default function PlaylistPage() {
             ))}
           </div>
         ) : (
-          <p>Start adding songs to this playlist by clicking the "Add to Playlist" button when searching.</p>
+          <p>Bắt đầu thêm bài hắt bằng cách tìm kiếm</p>
         )}
       </div>
     </div>
