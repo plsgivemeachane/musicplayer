@@ -69,7 +69,10 @@ export default function FullScreenPlayer() {
 
   // If no current song, return null to prevent rendering
   if (!currentSong) {
-    return null;
+    // Return home
+    router.push('/');
+    return
+    // return null;
   }
 
   return (

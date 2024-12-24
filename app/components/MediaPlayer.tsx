@@ -55,7 +55,18 @@ export default function MediaPlayer() {
           });
       }
     }
-  }, [currentSong, isPlaying]);
+  }, [currentSong]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      if (isPlaying) {
+        audio.play();
+      } else {
+        audio.pause();
+      }
+    }
+  }, [isPlaying]);
 
   const handleFavoriteToggle = () => {
     if (!currentSong) return;

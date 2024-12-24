@@ -5,6 +5,7 @@ import { PlayerProvider } from './context/PlayerContext'
 import { QueueProvider } from './context/QueueContext'
 import { ClerkProvider } from '@clerk/nextjs'
 import LayoutContent from './components/LayoutContent'
+import { Analytics } from "@vercel/analytics/react"
 
 const inter = Inter({ subsets: ['latin'] })
 import type { Viewport } from "next";
@@ -66,6 +67,7 @@ export const viewport: Viewport = {
               <LayoutContent>{children}</LayoutContent>
             </QueueProvider>
           </PlayerProvider>
+          <Analytics />
         </body>
       </html>
     </ClerkProvider>
