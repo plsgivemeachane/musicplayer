@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
+import { useUser } from '@clerk/nextjs';
 
 export default function FullScreenPlayer() {
   const router = useRouter();
@@ -34,6 +35,7 @@ export default function FullScreenPlayer() {
   const [showQueue, setShowQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const { isLoaded, isSignedIn, user } = useUser();
   const queueRef = useRef<HTMLDivElement>(null);
   
   // Use the audio from MediaPlayer component if possible
@@ -75,6 +77,10 @@ export default function FullScreenPlayer() {
     // return null;
   }
 
+  if(!isLoaded) {
+    return null
+  }
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -100,7 +106,7 @@ export default function FullScreenPlayer() {
         </button>
         <div className="flex items-center space-x-4">
           {/* Favorite Button */}
-          <button 
+          {isSignedIn && <button 
             onClick={() => {
               if (currentSong) {
                 if (isFavorite(currentSong.id)) {
@@ -117,7 +123,7 @@ export default function FullScreenPlayer() {
             ) : (
               <FaRegHeart size={24} />
             )}
-          </button>
+          </button>}
           
           <button 
             onClick={() => setShowQueue(!showQueue)}
@@ -138,7 +144,7 @@ export default function FullScreenPlayer() {
             className="w-full max-w-md aspect-square"
           >
             <Image 
-              src={currentSong.albumArt || '/placeholder-album.jpg'} 
+              src={currentSong.albumArt || '/placeholder-album.png'} 
               alt={currentSong.title}
               layout="responsive"
               width={500}
@@ -250,7 +256,7 @@ export default function FullScreenPlayer() {
                 >
                   <div className="flex items-center space-x-4">
                     <Image 
-                      src={song.albumArt || '/placeholder-album.jpg'}
+                      src={song.albumArt || '/placeholder-album.png'}
                       alt={song.title}
                       width={48}
                       height={48}

@@ -12,6 +12,7 @@ import Navigation from '../components/Navigation';
 import { motion } from "motion/react"
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
+import { useUser } from "@clerk/nextjs";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -56,6 +57,7 @@ function Search() {
   const { addToQueue } = useQueue();
   const router = useRouter();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const { isLoaded, isSignedIn, user } = useUser();
 
   useEffect(() => {
     const fetchSearchResults = async () => {
@@ -73,7 +75,8 @@ function Search() {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-          }
+          },
+          cache: "force-cache" // Because the song list is static
         });
         
         console.log('Response status:', response.status);
@@ -115,7 +118,7 @@ function Search() {
       title: result.name,
       artist: result.artist.name,
       url: `${BASE_URL}/video?v=${result.videoId}`,
-      albumArt: result.thumbnails[0]?.url || '/placeholder-album.jpg',
+      albumArt: result.thumbnails[0]?.url || '/placeholder-album.png',
       duration: result.duration
     };
 
@@ -125,7 +128,7 @@ function Search() {
       title: r.name,
       artist: r.artist.name,
       url: `${BASE_URL}/video?v=${r.videoId}`,
-      albumArt: r.thumbnails[0]?.url || '/placeholder-album.jpg',
+      albumArt: r.thumbnails[0]?.url || '/placeholder-album.png',
       duration: r.duration
     }));
 
@@ -185,6 +188,14 @@ function Search() {
         <p className="text-red-500">Lỗi!: {error}</p>
       </div>
     );
+  }
+
+  if(!isLoaded) {
+    return (
+      <div className="bg-black text-white min-h-screen p-4">
+        <p>Đang tải...</p>
+      </div>
+    )
   }
 
   return (
@@ -249,7 +260,7 @@ function Search() {
                 className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4 hover:bg-neutral-800 transition-colors"
               >
                 <Image 
-                  src={result.thumbnails[0]?.url || '/placeholder-album.jpg'}
+                  src={result.thumbnails[0]?.url || '/placeholder-album.png'}
                   alt={"Lỗi ảnh"}
                   width={48}
                   height={48}
@@ -260,12 +271,12 @@ function Search() {
                   <p className="text-xs text-neutral-400 truncate">{result.artist.name}</p>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <button 
+                  {isSignedIn && <button 
                     onClick={() => handleFavoriteToggle(result)}
                     className="text-red-500 hover:text-red-400 transition-colors"
                   >
                     {isFavorite(result.videoId) ? <FaHeart /> : <FaRegHeart />}
-                  </button>
+                  </button>}
                   <button 
                     onClick={() => handlePlaySong(result)}
                     className="text-white hover:text-blue-500 transition-colors"

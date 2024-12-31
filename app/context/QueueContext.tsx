@@ -11,7 +11,7 @@ interface QueueContextType {
   isShuffling: boolean;
   addToQueue: (songs: Song[]) => void;
   removeFromQueue: (index: number) => void;
-  nextSong: () => Song | null;
+  nextSong: (changeIndex?: boolean) => Song | null;
   prevSong: () => Song | null;
   setLooping: (loop: boolean) => void;
   setShuffling: (shuffle: boolean) => void;
@@ -26,11 +26,25 @@ export function QueueProvider({ children }: { children: ReactNode }) {
   const [currentIndex, setCurrentIndex] = useState(-1);
   const [isLooping, setIsLooping] = useState(false);
   const [isShuffling, setIsShuffling] = useState(false);
+  const [shuffledQueue, setShuffledQueue] = useState<Song[]>([]);
+  const [shuffleIndex, setShuffleIndex] = useState(-1);
+
+  // Fisher-Yates shuffle algorithm
+  const shuffleArray = useCallback((array: Song[]) => {
+    const shuffledArray = [...array];
+    for (let i = shuffledArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+    }
+    return shuffledArray;
+  }, []);
 
   const addToQueue = useCallback((songs: Song[]) => {
     // Clear the existing queue before adding new songs
     setQueue([]);
     setCurrentIndex(-1);
+    setShuffledQueue([]);
+    setShuffleIndex(-1);
 
     // Add unique songs
     const uniqueSongs = songs.filter(
@@ -55,42 +69,88 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     setCurrentIndex(-1);
   }, []);
 
-  const nextSong = useCallback(() => {
+  const nextSong = useCallback((changeIndex: boolean = true) => {
     if (queue.length === 0) return null;
 
-    let nextIndex;
-    if (isShuffling) {
-      // Random song selection
-      nextIndex = Math.floor(Math.random() * queue.length);
-    } else {
-      // Linear progression
-      nextIndex = (currentIndex + 1) % queue.length;
-    }
-
-    // Handle looping
-    if (nextIndex >= queue.length) {
-      if (isLooping) {
-        nextIndex = 0;
+    let nextIndex = currentIndex;
+    if (changeIndex) {
+      if (isShuffling) {
+        // Managed shuffle mode
+        if (shuffledQueue.length === 0) {
+          // First time shuffling, create shuffled queue
+          const newShuffledQueue = shuffleArray(queue);
+          setShuffledQueue(newShuffledQueue);
+          setShuffleIndex(0);
+          nextIndex = 0;
+        } else {
+          // Move to next index in shuffled queue
+          let newShuffleIndex = shuffleIndex + 1;
+          
+          // Reset or loop if we've gone through all songs
+          if (newShuffleIndex >= shuffledQueue.length) {
+            if (isLooping) {
+              newShuffleIndex = 0;
+            } else {
+              return null;
+            }
+          }
+          
+          setShuffleIndex(newShuffleIndex);
+          nextIndex = queue.findIndex(song => 
+            song.id === shuffledQueue[newShuffleIndex].id
+          );
+        }
       } else {
-        return null;
+        // Linear progression
+        nextIndex = (currentIndex + 1) % queue.length;
       }
+
+      // Handle looping for non-shuffle mode
+      if (!isShuffling && nextIndex >= queue.length) {
+        if (isLooping) {
+          nextIndex = 0;
+        } else {
+          return null;
+        }
+      }
+
+      // Update current index only if changeIndex is true
+      setCurrentIndex(nextIndex);
     }
 
-    setCurrentIndex(nextIndex);
-    return queue[nextIndex];
-  }, [queue, currentIndex, isLooping, isShuffling]);
+    return isShuffling ? shuffledQueue[shuffleIndex] : queue[nextIndex];
+  }, [queue, currentIndex, isLooping, isShuffling, shuffledQueue, shuffleIndex, shuffleArray]);
 
   const prevSong = useCallback(() => {
     if (queue.length === 0) return null;
 
     let prevIndex = currentIndex - 1;
-    if (prevIndex < 0) {
-      prevIndex = isLooping ? queue.length - 1 : 0;
+    if (isShuffling) {
+      // For shuffle mode, go back in the shuffled queue
+      let newShuffleIndex = shuffleIndex - 1;
+      
+      if (newShuffleIndex < 0) {
+        if (isLooping) {
+          newShuffleIndex = shuffledQueue.length - 1;
+        } else {
+          return null;
+        }
+      }
+      
+      setShuffleIndex(newShuffleIndex);
+      prevIndex = queue.findIndex(song => 
+        song.id === shuffledQueue[newShuffleIndex].id
+      );
+    } else {
+      // Regular previous song logic
+      if (prevIndex < 0) {
+        prevIndex = isLooping ? queue.length - 1 : 0;
+      }
     }
 
     setCurrentIndex(prevIndex);
-    return queue[prevIndex];
-  }, [queue, currentIndex, isLooping]);
+    return isShuffling ? shuffledQueue[shuffleIndex] : queue[prevIndex];
+  }, [queue, currentIndex, isLooping, isShuffling, shuffledQueue, shuffleIndex]);
 
   const setLooping = useCallback((loop: boolean) => {
     setIsLooping(loop);
@@ -98,7 +158,18 @@ export function QueueProvider({ children }: { children: ReactNode }) {
 
   const setShuffling = useCallback((shuffle: boolean) => {
     setIsShuffling(shuffle);
-  }, []);
+    
+    // Reset shuffle state when toggling
+    if (shuffle) {
+      const newShuffledQueue = shuffleArray(queue);
+      setShuffledQueue(newShuffledQueue);
+      setShuffleIndex(0);
+    } else {
+      // Clear shuffled queue when turning off shuffle
+      setShuffledQueue([]);
+      setShuffleIndex(-1);
+    }
+  }, [queue, shuffleArray]);
 
   return (
     <QueueContext.Provider 

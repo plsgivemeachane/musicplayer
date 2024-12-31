@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 import { FaPlay, FaPause, FaPlus, FaHeart, FaMusic, FaTrash, FaRegHeart } from 'react-icons/fa';
-import { useUser } from '@clerk/nextjs';
+import { SignedIn, useUser } from '@clerk/nextjs';
 import { useSearchParams } from 'next/navigation';
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
@@ -130,14 +130,22 @@ function Playlist() {
     }
   };
 
-  if (!isLoaded || !isSignedIn) {
+  if (!isLoaded) {
     return null;
+  }
+
+  if(!isSignedIn) {
+    return (
+      <div className="bg-black text-white min-h-screen flex items-center justify-center">
+        <p>Đăng nhập để sử dụng tính năng này</p>
+      </div>
+    );
   }
 
   if (!playlist) {
     return (
       <div className="bg-black text-white min-h-screen flex items-center justify-center">
-        <p>Loading playlist...</p>
+        <p>Tải playlist...</p>
       </div>
     );
   }

@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FaHome, FaMusic, FaHeart } from 'react-icons/fa'
+import { FaHome, FaMusic, FaHeart, FaUser } from 'react-icons/fa'
 import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/nextjs"
 import { pb } from './Pcketbase'
 import { SendOptions } from 'pocketbase'
@@ -37,7 +37,7 @@ export default function Navigation() {
           <SignedOut>
             <SignInButton mode="modal">
               <button className="flex flex-col items-center">
-                <FaHeart className="text-xl" />
+                <FaUser className="text-xl" />
                 <span className="text-xs mt-1">Đăng nhập</span>
               </button>
             </SignInButton>

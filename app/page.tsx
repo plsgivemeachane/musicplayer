@@ -96,10 +96,10 @@ export default function Home() {
     }
   }, []);
 
-  if (!isLoaded || !isSignedIn) {
+  if (!isLoaded) {
     return (
       <div>
-        <h1>Please sign in</h1>
+        <h1>Loading</h1>
       </div>
     )
   }
@@ -171,44 +171,49 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">{getGreeting()} {user?.firstName}</h2>
-          <button 
-            // onClick={createNewPlaylist}
-            onClick={() => alert("You just found a underdeveloped feature!")}
-            className="bg-green-500 text-black p-2 rounded-full hover:bg-green-600"
-          >
-            <FaPlus />
-          </button>
-        </div>
-
-        {/* Playlists List */}
-        <div className="space-y-4">
-          {playlists.map((playlist, index) => (
-            <div 
-              key={playlist.id} 
-              className="bg-neutral-800 p-4 rounded-lg flex items-center space-x-4 hover:bg-neutral-700 cursor-pointer"
-              onClick={() => router.push(`/playlist?playlistId=${playlist.id}`)}
-              onMouseEnter={() => {
-                router.prefetch(`/playlist?playlistId=${playlist.id}`, {
-                  kind: PrefetchKind.FULL
-                })
-              }}
+        {!user && <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center space-x-4 mt-24">
+            <h1 className="md:text-4xl text-xl font-bold">Đăng nhập để sử dụng playlists</h1>
+        </div>}
+        <div className={user ? "" : "blur-md"}>
+          {!user && <div className="fixed top-0 left-0 right-0 bottom-0 pointer-events-auto cursor-not-allowed"></div>}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-2xl font-bold">{getGreeting()} {user?user.firstName : "Anonymous"}</h2>
+            <button 
+              // onClick={createNewPlaylist}
+              onClick={() => alert("You just found a underdeveloped feature!")}
+              className="bg-green-500 text-black p-2 rounded-full hover:bg-green-600"
             >
-              <Image 
-                src={getImageForPlaylist(playlist)} 
-                alt={playlist.name}
-                width={64}
-                height={64}
-                className="rounded-lg"
-              />
-              <div>
-                <h3 className="font-semibold">{playlist.name}</h3>
-                <p className="text-neutral-400 text-sm">{playlist.songs.length} bài</p>
+              <FaPlus />
+            </button>
+          </div>
+
+          {/* Playlists List */}
+          <div className="space-y-4">
+            {playlists.map((playlist, index) => (
+              <div 
+                key={playlist.id} 
+                className="bg-neutral-800 p-4 rounded-lg flex items-center space-x-4 hover:bg-neutral-700 cursor-pointer"
+                onClick={() => router.push(`/playlist?playlistId=${playlist.id}`)}
+                onMouseEnter={() => {
+                  router.prefetch(`/playlist?playlistId=${playlist.id}`, {
+                    kind: PrefetchKind.FULL
+                  })
+                }}
+              >
+                <Image 
+                  src={getImageForPlaylist(playlist)} 
+                  alt={playlist.name}
+                  width={64}
+                  height={64}
+                  className="rounded-lg"
+                />
+                <div>
+                  <h3 className="font-semibold">{playlist.name}</h3>
+                  <p className="text-neutral-400 text-sm">{playlist.songs.length} bài</p>
+                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
