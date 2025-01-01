@@ -86,7 +86,7 @@ export default function Navigation() {
     syncUserPlaylists();
   }, [isSignedIn, user?.id])
 
-  if(!isLoaded || !isSignedIn) return
+  if(!isLoaded) return
 
   
   return (
