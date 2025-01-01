@@ -371,7 +371,7 @@ export default function MediaPlayer() {
       
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Image 
+          <img 
             src={currentSong.albumArt || '/placeholder-album.png'} 
             alt={"Loi anh"} 
             width={48} 

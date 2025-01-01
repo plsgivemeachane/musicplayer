@@ -178,7 +178,7 @@ function Playlist() {
               >
                 <div className="flex items-center space-x-4">
                   {song.albumArt ? (
-                    <Image 
+                    <img 
                       src={song.albumArt} 
                       alt={song.title} 
                       width={64} 

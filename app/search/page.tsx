@@ -259,7 +259,7 @@ function Search() {
                 key={result.videoId} 
                 className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4 hover:bg-neutral-800 transition-colors"
               >
-                <Image 
+                <img 
                   src={result.thumbnails[0]?.url || '/placeholder-album.png'}
                   alt={"Lỗi ảnh"}
                   width={48}

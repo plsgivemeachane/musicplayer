@@ -200,7 +200,7 @@ export default function Home() {
                   })
                 }}
               >
-                <Image 
+                <img 
                   src={getImageForPlaylist(playlist)} 
                   alt={playlist.name}
                   width={64}

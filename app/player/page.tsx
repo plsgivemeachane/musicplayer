@@ -143,10 +143,9 @@ export default function FullScreenPlayer() {
             animate={{ scale: 1, opacity: 1 }}
             className="w-full max-w-md aspect-square"
           >
-            <Image 
+            <img 
               src={currentSong.albumArt || '/placeholder-album.png'} 
               alt={currentSong.title}
-              layout="responsive"
               width={500}
               height={500}
               className="rounded-2xl shadow-2xl"
@@ -255,7 +254,7 @@ export default function FullScreenPlayer() {
                   }}
                 >
                   <div className="flex items-center space-x-4">
-                    <Image 
+                    <img 
                       src={song.albumArt || '/placeholder-album.png'}
                       alt={song.title}
                       width={48}
