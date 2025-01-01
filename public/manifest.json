@@ -1,6 +1,6 @@
 {
-  "name": "Quanvn Music Player",
-  "short_name": "QMPlayer",
+  "name": "Looped App",
+  "short_name": "Looped",
   "icons": [
     {
       "src": "icons/manifest-icon-192.maskable.png",
@@ -27,8 +27,8 @@
       "purpose": "maskable"
     }
   ],
-  "theme_color": "#00FFFF",
-  "background_color": "#00FFFF",
+  "theme_color": "#30D5C8",
+  "background_color": "#30D5C8",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait"

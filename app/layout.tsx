@@ -10,10 +10,10 @@ import { Analytics } from "@vercel/analytics/react"
 const inter = Inter({ subsets: ['latin'] })
 import type { Viewport } from "next";
 
-const APP_NAME = "QMusic";
-const APP_DEFAULT_TITLE = "Quanvn Music App";
+const APP_NAME = "Looped";
+const APP_DEFAULT_TITLE = "Looped App";
 const APP_TITLE_TEMPLATE = "%s - App";
-const APP_DESCRIPTION = "Quanvn Music App";
+const APP_DESCRIPTION = "Looped App";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
