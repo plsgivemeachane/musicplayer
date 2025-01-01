@@ -177,7 +177,7 @@ export default function Home() {
         <div className={user ? "" : "blur-md"}>
           {!user && <div className="fixed top-0 left-0 right-0 bottom-0 pointer-events-auto cursor-not-allowed"></div>}
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">{getGreeting()} {user?user.firstName : "Anonymous"}</h2>
+            <h2 className="text-2xl font-bold">{getGreeting()} {user?.firstName} </h2>
             <button 
               // onClick={createNewPlaylist}
               onClick={() => alert("You just found a underdeveloped feature!")}
