@@ -9,6 +9,7 @@ import { useQueue } from '../context/QueueContext';
 import { useFavorites } from '../hooks/useFavorites';
 import { motion } from "framer-motion"
 import { useUser } from '@clerk/nextjs';
+import { pb } from '@/lib/pocketbase';
 
 // IndexedDB storage management
 const BLOB_STORE_NAME = 'songBlobStore';
@@ -119,12 +120,6 @@ interface Song {
   albumArt?: string;
 }
 
-// Song URL cache interface
-interface SongUrlCache {
-  blobUrl: string;
-  expiresAt: number;
-}
-
 export default function MediaPlayer() {
   const { 
     currentSong, 
@@ -142,9 +137,6 @@ export default function MediaPlayer() {
   const router = useRouter();
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  // Song URL cache
-  const [songUrlCache, setSongUrlCache] = useState<Map<string, SongUrlCache>>(new Map());
-
   // Prevent duplicate processing
   const [processingUrls, setProcessingUrls] = useState<Set<string>>(new Set());
 
@@ -156,20 +148,14 @@ export default function MediaPlayer() {
       return song.url;
     }
 
-    // Check if cached blob URL is still valid
-    const cachedUrl = songUrlCache.get(song.id);
-    if (cachedUrl && cachedUrl.expiresAt > Date.now()) {
-      console.log(`[getSongBlobUrl] Using cached blob URL for song: ${song.title}`);
-      console.log(`[getSongBlobUrl] Cached URL expires at: ${new Date(cachedUrl.expiresAt).toISOString()}`);
-      
-      return cachedUrl.blobUrl;
-    }
-
     // Check if blob is stored in IndexedDB
     const storedBlob = await getBlobFromIndexedDB(song.id);
     if (storedBlob) {
       console.log(`[getSongBlobUrl] Retrieved blob from IndexedDB for song: ${song.title}`);
       const blobUrl = URL.createObjectURL(storedBlob);
+      // Call getSongBlobUrl again with prefetchNext set to false to prefetch next song
+      const nextTrack = nextSong(false)
+      if(nextTrack && prefetchNext) getSongBlobUrl(nextTrack, false);
       return blobUrl;
     }
 
@@ -178,7 +164,6 @@ export default function MediaPlayer() {
 
     // Create a background promise for processing
     const processingPromise = new Promise<string>(async (resolve, reject) => {
-      let abortController: AbortController | null = null;
 
       try {
         // Add song to processing set
@@ -186,92 +171,20 @@ export default function MediaPlayer() {
         
         console.log(`[getSongBlobUrl] Starting background process for song: ${song.title} (ID: ${song.id})`);
         
-        // Create abort controller
-        abortController = new AbortController();
-        const signal = abortController.signal;
-
-        // Fetch the song with timeout
-        const fetchWithTimeout = async (
-          url: string, 
-          options: { 
-            timeout?: number, 
-            signal?: AbortSignal 
-          } = {}
-        ): Promise<Response> => {
-          const { 
-            timeout = 10000, 
-            signal: inputSignal 
-          } = options;
-
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), timeout);
-
-          try {
-            const response = await fetch(url, { 
-              signal: inputSignal || controller.signal 
-            });
-            clearTimeout(timeoutId);
-            
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            return response;
-          } catch (error) {
-            clearTimeout(timeoutId);
-            throw error;
-          }
-        };
-
-        // Fetch the song
-        const response = await fetchWithTimeout(song.url, { signal });
+        const response = await fetch(song.url)
         
         const blob = await response.blob();
         const blobUrl = URL.createObjectURL(blob);
         
-        // Cache the blob URL with expiration (1 hour from now)
-        const expiresAt = Date.now() + BLOB_EXPIRATION_DURATION; // 1 hour
-        setSongUrlCache(prev => {
-          const newCache = new Map(prev);
-          newCache.set(song.id, { blobUrl, expiresAt });
-          console.log(`[getSongBlobUrl] Cached blob URL for ${song.title}. Expires at: ${new Date(expiresAt).toISOString()}`);
-          return newCache;
-        });
-
         // Save blob to IndexedDB
+        const expiresAt = Date.now() + BLOB_EXPIRATION_DURATION; // 1 hour
         await saveBlobToIndexedDB(song.id, blob, expiresAt);
 
         // Prefetch next song if requested
         if (prefetchNext) {
-          console.log(`[getSongBlobUrl] Attempting to prefetch next song`);
-          const nextTrack = nextSong(false);
-          if (nextTrack) {
-            console.log(`[getSongBlobUrl] Prefetching next track: ${nextTrack.title}`);
-            try {
-              const nextResponse = await fetchWithTimeout(nextTrack.url);
-              
-              const nextBlob = await nextResponse.blob();
-              const nextBlobUrl = URL.createObjectURL(nextBlob);
-              
-              // Cache the next track's blob URL
-              setSongUrlCache(prev => {
-                const newCache = new Map(prev);
-                newCache.set(nextTrack.id, { 
-                  blobUrl: nextBlobUrl, 
-                  expiresAt: Date.now() + BLOB_EXPIRATION_DURATION 
-                });
-                console.log(`[getSongBlobUrl] Prefetched and cached next track: ${nextTrack.title}`);
-                return newCache;
-              });
-
-              // Save next track's blob to IndexedDB
-              await saveBlobToIndexedDB(nextTrack.id, nextBlob, Date.now() + BLOB_EXPIRATION_DURATION);
-            } catch (prefetchError) {
-              console.error('[getSongBlobUrl] Error prefetching next song:', prefetchError);
-            }
-          } else {
-            console.log('[getSongBlobUrl] No next track available for prefetching');
-          }
+          // Call getSongBlobUrl again with prefetchNext set to false to prefetch next song
+          const nextTrack = nextSong(false)
+          if(nextTrack) getSongBlobUrl(nextTrack, false);
         }
 
         // Clean up processing state
@@ -282,11 +195,6 @@ export default function MediaPlayer() {
         });
         resolve(blobUrl);
       } catch (error) {
-        // Abort any ongoing fetch if it exists
-        if (abortController) {
-          abortController.abort();
-        }
-
         // Clean up processing state
         setProcessingUrls(prev => {
           const updated = new Set(prev);
@@ -314,7 +222,32 @@ export default function MediaPlayer() {
 
     // Immediately return the original URL
     return originalUrl;
-  }, [processingUrls, songUrlCache, nextSong]);
+  }, [processingUrls, nextSong]);
+
+    // audio.play();
+  // Attempt to play with auto-retry
+  const MAX_RETRIES = 15;
+  const RETRY_DELAY = 1000; // 1 second between retries
+
+  const attemptPlay = async (audio: any, retryCount = 0) => {
+    try {
+      if (isPlaying) {
+        await audio.play();
+      }
+    } catch (error) {
+      console.error(`Playback error (Attempt ${retryCount + 1}):`, error);
+      
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => {
+          attemptPlay(audio, retryCount + 1);
+        }, RETRY_DELAY);
+      } else {
+        console.error('Max retries reached. Unable to play song.');
+      }
+    }
+  };
+
+
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -335,6 +268,8 @@ export default function MediaPlayer() {
               playSong(nextTrack);
             }
           };
+
+          attemptPlay(audio);
         } catch (error) {
           console.error('Failed to set up audio:', error);
         }
@@ -348,30 +283,7 @@ export default function MediaPlayer() {
     const audio = audioRef.current;
     if (audio) {
       if (isPlaying) {
-        // audio.play();
-        // Attempt to play with auto-retry
-        const MAX_RETRIES = 15;
-        const RETRY_DELAY = 1000; // 1 second between retries
-
-        const attemptPlay = async (retryCount = 0) => {
-          try {
-            if (isPlaying) {
-              await audio.play();
-            }
-          } catch (error) {
-            console.error(`Playback error (Attempt ${retryCount + 1}):`, error);
-            
-            if (retryCount < MAX_RETRIES) {
-              setTimeout(() => {
-                attemptPlay(retryCount + 1);
-              }, RETRY_DELAY);
-            } else {
-              console.error('Max retries reached. Unable to play song.');
-            }
-          }
-        };
-
-        attemptPlay();
+        attemptPlay(audio);
       } else {
         audio.pause();
       }
@@ -386,8 +298,8 @@ export default function MediaPlayer() {
         title: currentSong.title,
         artist: currentSong.artist,
         artwork: currentSong.albumArt 
-          ? [{ src: currentSong.albumArt, sizes: '96x96', type: 'image/jpeg' }]
-          : [{ src: '/placeholder-album.png', sizes: '96x96', type: 'image/jpeg' }]
+          ? [{ src: currentSong.albumArt, sizes: '96x96', type: 'image/png' }]
+          : [{ src: '/placeholder-album.png', sizes: '96x96', type: 'image/png' }]
       });
 
       // Add media session action handlers
@@ -416,8 +328,21 @@ export default function MediaPlayer() {
     const intervalId = setInterval(() => {
       cleanupExpiredBlobs();
     }, 60 * 60 * 1000); // 1 hour
+    
+    
+    
+    // async function databaseWork() {
+    //   console.log("DO SOME STUFF")
+    //   const records = await pb.collection('playlists').getFullList({});
 
+    //   console.log(records)
+    // }
+
+    // databaseWork()
+    
+    cleanupExpiredBlobs(); // Every page load
     return () => clearInterval(intervalId);
+    
   }, []);
 
   const handleFavoriteToggle = () => {
@@ -448,7 +373,7 @@ export default function MediaPlayer() {
         <div className="flex items-center space-x-4">
           <Image 
             src={currentSong.albumArt || '/placeholder-album.png'} 
-            alt={currentSong.title} 
+            alt={"Loi anh"} 
             width={48} 
             height={48} 
             className="rounded-md"

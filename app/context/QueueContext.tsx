@@ -73,6 +73,7 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     if (queue.length === 0) return null;
 
     let nextIndex = currentIndex;
+    
     if (changeIndex) {
       if (isShuffling) {
         // Managed shuffle mode
@@ -116,9 +117,18 @@ export function QueueProvider({ children }: { children: ReactNode }) {
 
       // Update current index only if changeIndex is true
       setCurrentIndex(nextIndex);
-    }
 
-    return isShuffling ? shuffledQueue[shuffleIndex] : queue[nextIndex];
+      return isShuffling ? shuffledQueue[shuffleIndex] : queue[nextIndex];
+    } else {
+      // When changeIndex is false, return next song without changing pointer
+      if (isShuffling) {
+        const nextShuffleIndex = (shuffleIndex + 1) % shuffledQueue.length;
+        return shuffledQueue[nextShuffleIndex];
+      } else {
+        const nextLinearIndex = (currentIndex + 1) % queue.length;
+        return queue[nextLinearIndex];
+      }
+    }
   }, [queue, currentIndex, isLooping, isShuffling, shuffledQueue, shuffleIndex, shuffleArray]);
 
   const prevSong = useCallback(() => {
