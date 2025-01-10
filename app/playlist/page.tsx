@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation';
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
 import { useFavorites } from '../hooks/useFavorites';
+import { SongItem } from '../components/SongItem';
 
 import { motion } from 'motion/react' 
 
@@ -170,84 +171,19 @@ function Playlist() {
         {playlist.songs.length > 0 ? (
           <div className="space-y-4">
             {playlist.songs.map((song) => (
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                key={song.id} 
-                className="flex flex-wrap md:flex-nowrap gap-4 items-center justify-between bg-neutral-800 p-4 rounded-lg hover:bg-neutral-700 transition-colors"
-              >
-                <div className="flex items-center space-x-4">
-                  {song.albumArt ? (
-                    <img 
-                      src={song.albumArt} 
-                      alt={song.title} 
-                      width={64} 
-                      height={64} 
-                      className="rounded-md"
-                    />
-                  ) : (
-                    <div className="w-16 h-16 bg-neutral-700 rounded-md flex items-center justify-center">
-                      <FaMusic className="text-neutral-400" />
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-semibold">{song.title}</h3>
-                    <p className="text-neutral-400 text-sm">{song.artist}</p>
-                  </div>
-                </div>
-
-                <div className='w-full md:hidden'></div>
-                
-                <div className="flex items-center space-x-4">
-                  <span className="text-neutral-400 text-sm">
-                    {formatDuration(song.duration)}
-                  </span>
-
-                  <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={() => handleFavoriteToggle(song)}
-                    className="text-red-500 hover:text-red-400 transition-colors"
-                  >
-                    {isFavorite(song.id) ? <FaHeart /> : <FaRegHeart />}
-                  </button>
-                  <button 
-                    onClick={() => handlePlaySongFromPlaylist(song)}
-                    className="text-white hover:text-blue-500 transition-colors"
-                  >
-                    <FaPlay className="text-xl" />
-                  </button>
-                </div>
-
-                  {/* <button 
-                    className="text-neutral-400 hover:text-green-500"
-                    onClick={() => handleAddToQueue(song)}
-                    title="Add to Queue"
-                  >
-                    <FaPlus />
-                  </button>
-                  <button 
-                    className="text-neutral-400 hover:text-green-500"
-                    onClick={() => handlePlaySongFromPlaylist(song)}
-                    title="Play"
-                  >
-                    <FaPlay />
-                  </button>
-                  <button 
-                    className={`${isFavorite(song.id) ? 'text-red-500' : 'text-neutral-400'} hover:text-red-500`}
-                    onClick={() => handleFavoriteToggle(song)}
-                    title="Favorite"
-                  >
-                    {isFavorite(song.id) ? <FaHeart /> : <FaHeart />}
-                  </button>
-                  <button 
-                    className="text-neutral-400 hover:text-red-500"
-                    onClick={() => handleRemoveSongFromPlaylist(song.id)}
-                    title="Remove from Playlist"
-                  >
-                    <FaTrash />
-                  </button> */}
-                </div>
-              </motion.div>
+              <SongItem 
+                key={song.id}
+                result={{
+                  videoId: song.id,
+                  thumbnails: [{ url: song.albumArt || '/placeholder-album.png' }],
+                  name: song.title,
+                  artist: { name: song.artist }
+                }}
+                isSignedIn={isSignedIn}
+                isFavorite={(id) => isFavorite(id)}
+                handleFavoriteToggle={handleFavoriteToggle}
+                handlePlaySong={handlePlaySongFromPlaylist}
+              />
             ))}
           </div>
         ) : (

@@ -10,106 +10,7 @@ import { useFavorites } from '../hooks/useFavorites';
 import { motion } from "framer-motion"
 import { useUser } from '@clerk/nextjs';
 import { pb } from '@/lib/pocketbase';
-
-// IndexedDB storage management
-const BLOB_STORE_NAME = 'songBlobStore';
-const BLOB_DB_NAME = 'MusicPlayerBlobCache';
-const BLOB_DB_VERSION = 1;
-const BLOB_EXPIRATION_DURATION = 60 * 60 * 1000; // 1 hour
-
-const initializeBlobDB = async () => {
-  if (typeof window === 'undefined') return null;
-  
-  return await openDB(BLOB_DB_NAME, BLOB_DB_VERSION, {
-    upgrade(db) {
-      // Create an object store for song blobs
-      if (!db.objectStoreNames.contains(BLOB_STORE_NAME)) {
-        const store = db.createObjectStore(BLOB_STORE_NAME, { 
-          keyPath: 'songId'
-        });
-
-        // Create indexes for efficient querying
-        store.createIndex('expiresAt', 'expiresAt', { unique: false });
-      }
-    },
-  });
-};
-
-const saveBlobToIndexedDB = async (songId: string, blob: Blob, expiresAt: number) => {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const db = await initializeBlobDB();
-    if (!db) return;
-
-    const tx = db.transaction(BLOB_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(BLOB_STORE_NAME);
-    
-    await store.put({
-      songId,
-      blob,
-      expiresAt,
-      createdAt: Date.now()
-    });
-
-    await tx.done;
-    console.log(`[IndexedDB] Saved blob for song ${songId}`);
-  } catch (error) {
-    console.error('[IndexedDB] Error saving blob:', error);
-  }
-};
-
-const getBlobFromIndexedDB = async (songId: string) => {
-  if (typeof window === 'undefined') return null;
-
-  try {
-    const db = await initializeBlobDB();
-    if (!db) return null;
-
-    const tx = db.transaction(BLOB_STORE_NAME, 'readonly');
-    const store = tx.objectStore(BLOB_STORE_NAME);
-    
-    const item = await store.get(songId);
-    
-    if (item && item.expiresAt > Date.now()) {
-      console.log(`[IndexedDB] Retrieved blob for song ${songId}`);
-      return item.blob;
-    }
-    
-    // If expired or not found, return null
-    return null;
-  } catch (error) {
-    console.error('[IndexedDB] Error retrieving blob:', error);
-    return null;
-  }
-};
-
-const cleanupExpiredBlobs = async () => {
-  if (typeof window === 'undefined') return;
-
-  try {
-    const db = await initializeBlobDB();
-    if (!db) return;
-
-    const tx = db.transaction(BLOB_STORE_NAME, 'readwrite');
-    const store = tx.objectStore(BLOB_STORE_NAME);
-    
-    const index = store.index('expiresAt');
-    const expiredRange = IDBKeyRange.upperBound(Date.now());
-    
-    let cursor = await index.openCursor(expiredRange);
-    
-    while (cursor) {
-      await cursor.delete();
-      cursor = await cursor.continue();
-    }
-
-    await tx.done;
-    console.log('[IndexedDB] Cleaned up expired blobs');
-  } catch (error) {
-    console.error('[IndexedDB] Error cleaning up blobs:', error);
-  }
-};
+import { songBlobProcessor } from '../utils/songBlobProcessor';
 
 interface Song {
   id: string;
@@ -142,86 +43,12 @@ export default function MediaPlayer() {
 
   // Fetch and cache song URL as blob
   const getSongBlobUrl = useCallback(async (song: Song, prefetchNext: boolean = true) => {
-    // Prevent multiple processing for the same song
-    if (processingUrls.has(song.id)) {
-      console.log(`[getSongBlobUrl] Song ${song.title} is already being processed. Skipping.`);
-      return song.url;
-    }
-
-    // Check if blob is stored in IndexedDB
-    const storedBlob = await getBlobFromIndexedDB(song.id);
-    if (storedBlob) {
-      console.log(`[getSongBlobUrl] Retrieved blob from IndexedDB for song: ${song.title}`);
-      const blobUrl = URL.createObjectURL(storedBlob);
-      // Call getSongBlobUrl again with prefetchNext set to false to prefetch next song
-      const nextTrack = nextSong(false)
-      if(nextTrack && prefetchNext) getSongBlobUrl(nextTrack, false);
-      return blobUrl;
-    }
-
-    // Immediately return the original URL
-    const originalUrl = song.url;
-
-    // Create a background promise for processing
-    const processingPromise = new Promise<string>(async (resolve, reject) => {
-
-      try {
-        // Add song to processing set
-        setProcessingUrls(prev => new Set(prev).add(song.id));
-        
-        console.log(`[getSongBlobUrl] Starting background process for song: ${song.title} (ID: ${song.id})`);
-        
-        const response = await fetch(song.url)
-        
-        const blob = await response.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        
-        // Save blob to IndexedDB
-        const expiresAt = Date.now() + BLOB_EXPIRATION_DURATION; // 1 hour
-        await saveBlobToIndexedDB(song.id, blob, expiresAt);
-
-        // Prefetch next song if requested
-        if (prefetchNext) {
-          // Call getSongBlobUrl again with prefetchNext set to false to prefetch next song
-          const nextTrack = nextSong(false)
-          if(nextTrack) getSongBlobUrl(nextTrack, false);
-        }
-
-        // Clean up processing state
-        setProcessingUrls(prev => {
-          const updated = new Set(prev);
-          updated.delete(song.id);
-          return updated;
-        });
-        resolve(blobUrl);
-      } catch (error) {
-        // Clean up processing state
-        setProcessingUrls(prev => {
-          const updated = new Set(prev);
-          updated.delete(song.id);
-          return updated;
-        });
-        // Log the error
-        console.error('[getSongBlobUrl] Error in URL processing:', error);
-
-        // If it's an abort error, return the original URL
-        if (error instanceof DOMException && error.name === 'AbortError') {
-          console.warn('[getSongBlobUrl] Fetch was aborted. Returning original URL.');
-          resolve(song.url);
-        } else {
-          // For other errors, reject the promise
-          reject(error);
-        }
-      }
+    return songBlobProcessor.getSongBlobUrl(song, {
+      processingUrls,
+      setProcessingUrls,
+      nextSong,
+      prefetchNext
     });
-
-    // Start the processing promise in the background
-    processingPromise.catch(error => {
-      console.error('[getSongBlobUrl] Background processing error:', error);
-    });
-
-    // Immediately return the original URL
-    return originalUrl;
   }, [processingUrls, nextSong]);
 
     // audio.play();
@@ -231,7 +58,7 @@ export default function MediaPlayer() {
 
   const attemptPlay = async (audio: any, retryCount = 0) => {
     try {
-      if (isPlaying) {
+      if (isPlaying && audio.paused) {
         await audio.play();
       }
     } catch (error) {
@@ -325,24 +152,11 @@ export default function MediaPlayer() {
   }, [currentSong, prevSong, nextSong]);
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
-      cleanupExpiredBlobs();
-    }, 60 * 60 * 1000); // 1 hour
-    
-    
-    
-    // async function databaseWork() {
-    //   console.log("DO SOME STUFF")
-    //   const records = await pb.collection('playlists').getFullList({});
+    const cleanupInterval = setInterval(() => {
+      // blobStorage.cleanupExpiredBlobs();
+    }, 24 * 60 * 60 * 1000); // Daily cleanup
 
-    //   console.log(records)
-    // }
-
-    // databaseWork()
-    
-    cleanupExpiredBlobs(); // Every page load
-    return () => clearInterval(intervalId);
-    
+    return () => clearInterval(cleanupInterval);
   }, []);
 
   const handleFavoriteToggle = () => {

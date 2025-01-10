@@ -11,8 +11,11 @@
   "dependencies": {
     "@clerk/nextjs": "^6.9.6",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@lit/react": "^1.0.6",
+    "@material/web": "^2.2.0",
     "@sentry/nextjs": "^8.47.0",
     "@vercel/analytics": "^1.4.1",
+    "lit": "^3.2.1",
     "motion": "^11.15.0",
     "next": "15.1.2",
     "pocketbase": "^0.24.0",

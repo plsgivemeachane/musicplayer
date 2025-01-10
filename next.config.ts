@@ -18,11 +18,29 @@ const nextConfig: NextConfig = withPWA({
         hostname: "**",
       },
     ],
-
   },
   experimental: {
     missingSuspenseWithCSRBailout: false,
   },
+  webpack: (config: any, { isServer }: any) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false
+      };
+    }
+    return config;
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/blob-processor-sw.js',
+        destination: '/blob-processor-sw.js'
+      }
+    ];
+  }
 });
 
 export default withSentryConfig(nextConfig, {

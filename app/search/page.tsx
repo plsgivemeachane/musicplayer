@@ -13,6 +13,7 @@ import { motion } from "motion/react"
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
 import { useUser } from "@clerk/nextjs";
+import { SongItem } from '../components/SongItem';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
@@ -111,6 +112,18 @@ function Search() {
     fetchSearchResults();
   }, [queryParam]);
 
+  const getLargestAlbumArt = (thumbnails: SearchResult['thumbnails']) => {
+    if (thumbnails.length > 0) {
+      return thumbnails.reduce((largest, thumbnail) => {
+        if (thumbnail.width > largest.width) {
+          return thumbnail;
+        }
+        return largest;
+      });
+    }
+    return null;
+  };
+
   const handlePlaySong = (result: SearchResult) => {
     // Convert SearchResult to Song
     const song: Song = {
@@ -118,7 +131,7 @@ function Search() {
       title: result.name,
       artist: result.artist.name,
       url: `${BASE_URL}/video?v=${result.videoId}`,
-      albumArt: result.thumbnails[0]?.url || '/placeholder-album.png',
+      albumArt: getLargestAlbumArt(result.thumbnails)?.url || '/placeholder-album.png',
       duration: result.duration
     };
 
@@ -128,7 +141,7 @@ function Search() {
       title: r.name,
       artist: r.artist.name,
       url: `${BASE_URL}/video?v=${r.videoId}`,
-      albumArt: r.thumbnails[0]?.url || '/placeholder-album.png',
+      albumArt: getLargestAlbumArt(r.thumbnails)?.url || '/placeholder-album.png',
       duration: r.duration
     }));
 
@@ -255,36 +268,14 @@ function Search() {
         ) : (searchResults.length > 0 && (
           <div className="space-y-2">
             {searchResults.map((result) => (
-              <div 
-                key={result.videoId} 
-                className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4 hover:bg-neutral-800 transition-colors"
-              >
-                <img 
-                  src={result.thumbnails[0]?.url || '/placeholder-album.png'}
-                  alt={"Lỗi ảnh"}
-                  width={48}
-                  height={48}
-                  className="rounded-md object-cover"
-                />
-                <div className="flex-grow overflow-hidden">
-                  <h3 className="text-sm font-semibold truncate">{result.name}</h3>
-                  <p className="text-xs text-neutral-400 truncate">{result.artist.name}</p>
-                </div>
-                <div className="flex items-center space-x-2">
-                  {isSignedIn && <button 
-                    onClick={() => handleFavoriteToggle(result)}
-                    className="text-red-500 hover:text-red-400 transition-colors"
-                  >
-                    {isFavorite(result.videoId) ? <FaHeart /> : <FaRegHeart />}
-                  </button>}
-                  <button 
-                    onClick={() => handlePlaySong(result)}
-                    className="text-white hover:text-blue-500 transition-colors"
-                  >
-                    <FaPlay className="text-xl" />
-                  </button>
-                </div>
-              </div>
+              <SongItem 
+                key={result.videoId}
+                result={result}
+                isSignedIn={isSignedIn}
+                isFavorite={isFavorite}
+                handleFavoriteToggle={handleFavoriteToggle}
+                handlePlaySong={handlePlaySong}
+              />
             ))}
           </div>
         ))}

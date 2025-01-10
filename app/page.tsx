@@ -171,6 +171,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+
         {!user && <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center space-x-4 mt-24">
             <h1 className="md:text-4xl text-xl font-bold">Đăng nhập để sử dụng playlists</h1>
         </div>}
