@@ -173,12 +173,7 @@ function Playlist() {
             {playlist.songs.map((song) => (
               <SongItem 
                 key={song.id}
-                result={{
-                  videoId: song.id,
-                  thumbnails: [{ url: song.albumArt || '/placeholder-album.png' }],
-                  name: song.title,
-                  artist: { name: song.artist }
-                }}
+                result={song}
                 isSignedIn={isSignedIn}
                 isFavorite={(id) => isFavorite(id)}
                 handleFavoriteToggle={handleFavoriteToggle}
