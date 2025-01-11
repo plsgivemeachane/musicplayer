@@ -35,17 +35,19 @@ export default function FullScreenPlayer() {
   const [showQueue, setShowQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolume] = useState(() => {
-    // Initialize volume from localStorage, default to 1 if not set
-    const savedVolume = localStorage.getItem('musicPlayerVolume');
-    return savedVolume ? parseFloat(savedVolume) : 1;
-  });
+  const [volume, setVolume] = useState(1);
   const [previousVolume, setPreviousVolume] = useState(1);
   const { isLoaded, isSignedIn, user } = useUser();
   const queueRef = useRef<HTMLDivElement>(null);
   
   // Use the audio from MediaPlayer component if possible
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    // Initialize volume from localStorage, default to 1 if not set
+    const savedVolume = localStorage.getItem('musicPlayerVolume');
+    setVolume(savedVolume ? parseFloat(savedVolume) : 1);
+  }, [])
 
   useEffect(() => {
     // Find the audio element from MediaPlayer if it exists
