@@ -41,13 +41,13 @@ self.addEventListener('message', async (event) => {
       }
       
       // Create blob URL
-      const blobUrl = URL.createObjectURL(blob);
+      // const blobUrl = URL.createObjectURL(blob);
       
       console.log(`[ServiceWorker] Created blob URL for song: ${songTitle}`);
       
       // Send back blob URL
       event.ports[0].postMessage({ 
-        blobUrl, 
+        blobUrl: null,
         songId,
         songTitle 
       });

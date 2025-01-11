@@ -3,7 +3,7 @@ import { openDB } from 'idb';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { FaPlay, FaPause, FaStepBackward, FaStepForward, FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaPlay, FaPause, FaStepBackward, FaStepForward, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeDown, FaVolumeMute, FaVolumeOff } from 'react-icons/fa';
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
 import { useFavorites } from '../hooks/useFavorites';
@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { useUser } from '@clerk/nextjs';
 import { pb } from '@/lib/pocketbase';
 import { songBlobProcessor } from '../utils/songBlobProcessor';
+import { PiKeyReturnBold } from 'react-icons/pi';
 
 interface Song {
   id: string;
@@ -58,12 +59,12 @@ export default function MediaPlayer() {
 
   const attemptPlay = async (audio: any, retryCount = 0) => {
     try {
-      if (isPlaying && audio.paused) {
+      if (isPlaying) {
         await audio.play();
       }
     } catch (error) {
       console.error(`Playback error (Attempt ${retryCount + 1}):`, error);
-      
+      await audio.load();
       if (retryCount < MAX_RETRIES) {
         setTimeout(() => {
           attemptPlay(audio, retryCount + 1);
@@ -74,19 +75,46 @@ export default function MediaPlayer() {
     }
   };
 
+  const [volume, setVolume] = useState(1);
 
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !audioRef.current.muted;
+      setVolume(audioRef.current.muted ? 0 : audioRef.current.volume);
+    }
+  };
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.onpause = () => {
+      if(!isPlaying) return;
+      console.error('Error loading audio:', audio.error);
+      attemptPlay(audio)
+    };
+
+  }, [audioRef, isPlaying])
 
   useEffect(() => {
     const audio = audioRef.current;
     if (audio && currentSong) {
       const setupAudio = async () => {
+        console.log("Resetup audio")
         try {
           // Get blob URL, and prefetch next song
           const blobUrl = await getSongBlobUrl(currentSong, true);
           
           // Set the audio source to blob URL
           audio.src = blobUrl;
-          audio.load();
+          // audio.load();
 
           audio.onended = () => {
             console.log("Ended")
@@ -95,7 +123,6 @@ export default function MediaPlayer() {
               playSong(nextTrack);
             }
           };
-
           attemptPlay(audio);
         } catch (error) {
           console.error('Failed to set up audio:', error);
@@ -104,7 +131,7 @@ export default function MediaPlayer() {
 
       setupAudio();
     }
-  }, [currentSong?.id, nextSong, playSong]);
+  }, [currentSong?.id, playSong]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -116,6 +143,13 @@ export default function MediaPlayer() {
       }
     }
   }, [isPlaying]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+    }
+  }, [volume]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -177,7 +211,7 @@ export default function MediaPlayer() {
       initial={{ scale: 0 }} 
       animate={{ scale: 1 }} 
       className="fixed bottom-20 left-4 sm:left-12 right-4 sm:right-12 bg-black/80 backdrop-blur-md rounded-xl p-4 z-40"
-      whileHover={{ scale: 1.05 }}
+      // whileHover={{ scale: 1.05 }}
       onMouseEnter={() => router.prefetch('/player')}
       onClick={() => router.push('/player')}
     >
@@ -233,7 +267,7 @@ export default function MediaPlayer() {
             <FaStepForward size={20} />
           </button>
         </div>
-      </div>
+    </div>
     </motion.div>
   );
 }

@@ -80,19 +80,11 @@ export class SongBlobProcessor {
             songId: song.id,
             songTitle: song.title
           },
-          // Progress callback
-          (progress) => {
-            console.log(
-              `Downloading ${song.title}: ${progress.percentComplete.toFixed(2)}% ` +
-              `(${progress.loaded}/${progress.total} bytes)`
-            );
-            // You can dispatch a progress event or update UI here if needed
-          }
         );
 
         // If blob processing fails, return original URL
         if (error || !blobUrl) {
-          resolve(song.url);
+          resolve("OK");
           return;
         }
         
@@ -130,7 +122,7 @@ export class SongBlobProcessor {
 
         // Log the error
         console.error('[getSongBlobUrl] Error in URL processing:', error);
-        resolve(song.url);
+        resolve("OK");
       }
     });
 

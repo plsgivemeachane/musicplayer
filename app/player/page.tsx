@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
 import { motion, AnimatePresence } from "framer-motion";
-import { FaChevronDown, FaPlay, FaPause, FaStepBackward, FaStepForward, FaRandom, FaRetweet, FaBars, FaTrash, FaHeart, FaRegHeart } from 'react-icons/fa';
+import { FaChevronDown, FaPlay, FaPause, FaStepBackward, FaStepForward, FaRandom, FaRetweet, FaBars, FaTrash, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Song } from '../types/song';
@@ -35,6 +35,12 @@ export default function FullScreenPlayer() {
   const [showQueue, setShowQueue] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(() => {
+    // Initialize volume from localStorage, default to 1 if not set
+    const savedVolume = localStorage.getItem('musicPlayerVolume');
+    return savedVolume ? parseFloat(savedVolume) : 1;
+  });
+  const [previousVolume, setPreviousVolume] = useState(1);
   const { isLoaded, isSignedIn, user } = useUser();
   const queueRef = useRef<HTMLDivElement>(null);
   
@@ -55,7 +61,7 @@ export default function FullScreenPlayer() {
       };
 
       existingAudio.addEventListener('timeupdate', handleTimeUpdate);
-      
+
       // Cleanup
       return () => {
         existingAudio.removeEventListener('timeupdate', handleTimeUpdate);
@@ -63,7 +69,40 @@ export default function FullScreenPlayer() {
     }
   }, [currentSong]);
 
+  useEffect(() => {
+    // Sync volume with localStorage whenever it changes
+    localStorage.setItem('musicPlayerVolume', volume.toString());
+    
+    // Also sync with audio element
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
+  }, [volume]);
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVolume = parseFloat(e.target.value);
+    setVolume(newVolume);
+    setPreviousVolume(newVolume);
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      if (audioRef.current.muted) {
+        // Unmute and restore previous volume
+        audioRef.current.muted = false;
+        const restoreVolume = previousVolume > 0 ? previousVolume : 1;
+        setVolume(restoreVolume);
+      } else {
+        // Mute and save current volume
+        audioRef.current.muted = true;
+        setPreviousVolume(volume);
+        setVolume(0);
+      }
+    }
+  };
+
   const formatTime = (time: number) => {
+    if (isNaN(time)) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
@@ -179,6 +218,33 @@ export default function FullScreenPlayer() {
           </div>
         </div>
 
+        {/* Volume Control */}
+        <div className="px-8 mb-4 lg:flex items-center space-x-4 hidden">
+          <button 
+            onClick={toggleMute}
+            className="text-white"
+          >
+            {volume > 0 ? <FaVolumeUp size={24} /> : <FaVolumeMute size={24} />}
+          </button>
+          <div className="relative flex-grow h-1 bg-neutral-700 rounded-full">
+            <div 
+              className="absolute left-0 top-0 bottom-0 bg-white rounded-full" 
+              style={{ 
+                width: `${volume * 100}%` 
+              }}
+            />
+            <input 
+              type="range" 
+              min={0} 
+              max={1} 
+              step={0.01} 
+              value={volume} 
+              onChange={handleVolumeChange} 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
+        </div>
+
         {/* Playback Controls */}
         <div className="flex justify-center items-center space-x-8 mb-24">
           <button 
@@ -266,7 +332,7 @@ export default function FullScreenPlayer() {
                       <p className="text-neutral-400 text-sm">{song.artist}</p>
                     </div>
                   </div>
-                  <button 
+                  {/* <button 
                     onClick={(e) => {
                       e.stopPropagation();
                       removeFromQueue(index);
@@ -274,7 +340,7 @@ export default function FullScreenPlayer() {
                     className="text-neutral-400 hover:text-white"
                   >
                     <FaTrash />
-                  </button>
+                  </button> */}
                 </motion.div>
               ))}
             </div>

@@ -49,15 +49,10 @@ export class ServiceWorkerManager {
       songId: string, 
       songTitle: string 
     },
-    onProgress?: (progress: DownloadProgress) => void
   ): Promise<{ 
     blobUrl: string | null, 
     error?: string 
   }> {
-    // Register progress listener if provided
-    if (onProgress) {
-      this.progressListeners.set(songData.songId, onProgress);
-    }
 
     return new Promise((resolve) => {
       // Create a message channel for two-way communication
