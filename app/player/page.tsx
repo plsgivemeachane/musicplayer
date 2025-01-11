@@ -128,6 +128,17 @@ export default function FullScreenPlayer() {
       animate={{ opacity: 1 }}
       className="fixed inset-0 bg-black z-50 flex flex-col"
     >
+      {/* Blurry Background */}
+      {currentSong?.albumArt && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center filter blur-2xl opacity-30" 
+          style={{ 
+            backgroundImage: `url(${currentSong.albumArt})`,
+            transform: 'scale(1.1)'
+          }}
+        />
+      )}
+
       {/* Blur Overlay when Queue is Open */}
       {showQueue && (
         <motion.div
@@ -176,7 +187,12 @@ export default function FullScreenPlayer() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-grow flex flex-col z-20 overflow-scroll">
+      <div className="flex-grow flex flex-col z-20 overflow-y-auto
+                      [&::-webkit-scrollbar]:w-2
+                    [&::-webkit-scrollbar-track]:bg-gray-100
+                    [&::-webkit-scrollbar-thumb]:bg-gray-300
+                    dark:[&::-webkit-scrollbar-track]:bg-neutral-700
+                    dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
         {/* Album Art */}
         <div className="flex items-center justify-center mt-20">
           <motion.div
@@ -189,7 +205,7 @@ export default function FullScreenPlayer() {
               alt={currentSong.title}
               width={500}
               height={500}
-              className="rounded-2xl shadow-2xl"
+              className="rounded-2xl shadow-xl shadow-black border-none"
             />
           </motion.div>
         </div>
