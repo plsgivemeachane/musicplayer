@@ -145,7 +145,10 @@ function Search() {
       duration: r.duration
     }));
 
-    addToQueue(queueSongs);
+    // Find the index of the current song in the queue
+    const currentSongIndex = queueSongs.findIndex(song => song.id === result.videoId);
+
+    addToQueue(queueSongs, currentSongIndex);
     
     // Play the selected song
     playSong(song);

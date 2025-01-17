@@ -75,11 +75,17 @@ export default function MediaPlayer() {
     }
   };
 
-  const [volume, setVolume] = useState(1);
+  const [volume, setVolume] = useState(() => {
+    // Initialize volume from localStorage, default to 1 if not set
+    const savedVolume = localStorage.getItem('musicPlayerVolume');
+    return savedVolume ? parseFloat(savedVolume) : 1;
+  });
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
+    // Save volume to localStorage
+    localStorage.setItem('musicPlayerVolume', newVolume.toString());
     if (audioRef.current) {
       audioRef.current.volume = newVolume;
     }
@@ -88,7 +94,10 @@ export default function MediaPlayer() {
   const toggleMute = () => {
     if (audioRef.current) {
       audioRef.current.muted = !audioRef.current.muted;
-      setVolume(audioRef.current.muted ? 0 : audioRef.current.volume);
+      const newVolume = audioRef.current.muted ? 0 : 1;
+      setVolume(newVolume);
+      // Save volume to localStorage
+      localStorage.setItem('musicPlayerVolume', newVolume.toString());
     }
   };
 
@@ -183,7 +192,7 @@ export default function MediaPlayer() {
       // Update playback state
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
-  }, [currentSong, prevSong, nextSong]);
+  }, [currentSong, prevSong, nextSong, isPlaying]);
 
   useEffect(() => {
     const cleanupInterval = setInterval(() => {

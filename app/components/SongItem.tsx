@@ -56,7 +56,7 @@ export const SongItem: React.FC<SongItemProps> = ({
     >
       <img 
         src={songData.albumArt}
-        alt={songData.title}
+        alt={"Loi Anh"}
         width={48}
         height={48}
         className="rounded-md object-cover"

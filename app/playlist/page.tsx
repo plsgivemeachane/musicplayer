@@ -121,7 +121,13 @@ function Playlist() {
   const handlePlaySongFromPlaylist = (song: Song) => {
     if (playlist && playlist.songs.length > 0) {
       // Add all songs from the playlist
-      addToQueue(playlist.songs);
+      const playlistSongs = playlist.songs;
+      
+      // Find the index of the selected song in the playlist
+      const currentSongIndex = playlistSongs.findIndex(s => s.id === song.id);
+
+      // Add songs to queue with the correct starting index
+      addToQueue(playlistSongs, currentSongIndex);
       
       // Play the selected song
       playSong(song);

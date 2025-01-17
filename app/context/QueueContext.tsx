@@ -9,7 +9,7 @@ interface QueueContextType {
   currentIndex: number;
   isLooping: boolean;
   isShuffling: boolean;
-  addToQueue: (songs: Song[]) => void;
+  addToQueue: (songs: Song[], startIndex?: number) => void;
   removeFromQueue: (index: number) => void;
   nextSong: (changeIndex?: boolean) => Song | null;
   prevSong: () => Song | null;
@@ -39,7 +39,7 @@ export function QueueProvider({ children }: { children: ReactNode }) {
     return shuffledArray;
   }, []);
 
-  const addToQueue = useCallback((songs: Song[]) => {
+  const addToQueue = useCallback((songs: Song[], startIndex?: number) => {
     // Clear the existing queue before adding new songs
     setQueue([]);
     setCurrentIndex(-1);
@@ -54,9 +54,9 @@ export function QueueProvider({ children }: { children: ReactNode }) {
 
     setQueue(uniqueSongs);
 
-    // If songs exist, start playing from the first song
+    // If songs exist, start playing from the first song or the specified start index
     if (uniqueSongs.length > 0) {
-      setCurrentIndex(0);
+      setCurrentIndex(startIndex !== undefined ? startIndex : 0);
     }
   }, []);
 
