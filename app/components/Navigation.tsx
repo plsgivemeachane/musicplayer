@@ -11,8 +11,6 @@ export default function Navigation() {
 
   const { isLoaded, isSignedIn ,user } = useUser()
 
-
-
   pb.beforeSend = ((url: string, options: SendOptions) => {
     return {
       ...options,
@@ -96,9 +94,13 @@ export default function Navigation() {
           <FaHome className="text-xl" />
           <span className="text-xs mt-1">Nhà</span>
         </Link>
-        <Link prefetch={true} href="/library" className="flex flex-col items-center text-neutral-400 hover:text-white">
+        {/* <Link prefetch={true} href="/library" className="flex flex-col items-center text-neutral-400 hover:text-white">
           <FaMusic className="text-xl" />
           <span className="text-xs mt-1">Thư viện</span>
+        </Link> */}
+        <Link prefetch={true} href="/spotify" className="flex flex-col items-center text-neutral-400 hover:text-white">
+          <FaMusic className="text-xl" />
+          <span className="text-xs mt-1">Spotify</span>
         </Link>
         <Link prefetch={true} href="/playlist?playlistId=favorites" className="flex flex-col items-center text-neutral-400 hover:text-white">
           <FaHeart className="text-xl" />
