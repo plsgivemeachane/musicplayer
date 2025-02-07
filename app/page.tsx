@@ -8,6 +8,7 @@ import { usePlayer } from './context/PlayerContext';
 import MediaPlayer from "./components/MediaPlayer";
 import Navigation from "./components/Navigation";
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
+import StarfallBackground from "./components/StarfallBackground";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL + "/7860";
 
@@ -147,7 +148,8 @@ export default function Home() {
   }
 
   return (
-    <div className="bg-black text-white min-h-screen p-4">
+    <div className="min-h-screen p-4">
+      {/* <StarfallBackground /> */}
       {/* Main Content */}
       <div className="max-w-md mx-auto">
         {/* Top Bar */}

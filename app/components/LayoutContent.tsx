@@ -24,7 +24,7 @@ function LayoutContent({ children }: { children: ReactNode }) {
   const { currentSong } = usePlayer();
 
   return (
-    <div className={`${roboto.variable} ${robotoMono.variable} font-sans flex flex-col min-h-screen pb-32`}>
+    <div className={`${roboto.variable} ${robotoMono.variable} font-sans flex flex-col min-h-screen pb-32 bg-[linear-gradient(135deg,rgba(0,255,255,0.5)0%,rgba(0,0,0,1)100%)]`}>
       <main className="flex-grow">
         {children}
       </main>

@@ -44,6 +44,9 @@ export default function MediaPlayer() {
 
   // Fetch and cache song URL as blob
   const getSongBlobUrl = useCallback(async (song: Song, prefetchNext: boolean = true) => {
+    // Attempt to fetch song URL as blob, and cache it
+    // If successful, return the blob URL
+    // If failed, return undefined
     return songBlobProcessor.getSongBlobUrl(song, {
       processingUrls,
       setProcessingUrls,
@@ -59,10 +62,12 @@ export default function MediaPlayer() {
 
   const attemptPlay = async (audio: any, retryCount = 0) => {
     try {
+      // Attempt to play the audio
       if (isPlaying) {
         await audio.play();
       }
     } catch (error) {
+      // If playback fails, log the error and retry after a delay
       console.error(`Playback error (Attempt ${retryCount + 1}):`, error);
       await audio.load();
       if (retryCount < MAX_RETRIES) {
@@ -104,6 +109,8 @@ export default function MediaPlayer() {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Set up audio element error handler
     audio.onpause = () => {
       if(!isPlaying) return;
       console.error('Error loading audio:', audio.error);
@@ -116,26 +123,22 @@ export default function MediaPlayer() {
     const audio = audioRef.current;
     if (audio && currentSong) {
       const setupAudio = async () => {
-        console.log("Resetup audio")
-        try {
-          // Get blob URL, and prefetch next song
-          const blobUrl = await getSongBlobUrl(currentSong, true);
-          
-          // Set the audio source to blob URL
-          audio.src = blobUrl;
-          // audio.load();
+        // Attempt to fetch song URL as blob, and cache it
+        const blobUrl = await getSongBlobUrl(currentSong, true);
+        
+        // Set the audio source to blob URL
+        audio.src = blobUrl;
+        // audio.load();
 
-          audio.onended = () => {
-            console.log("Ended")
-            const nextTrack = nextSong();
-            if (nextTrack) {
-              playSong(nextTrack);
-            }
-          };
-          attemptPlay(audio);
-        } catch (error) {
-          console.error('Failed to set up audio:', error);
-        }
+        // Set up audio element ended handler
+        audio.onended = () => {
+          console.log("Ended")
+          const nextTrack = nextSong();
+          if (nextTrack) {
+            playSong(nextTrack);
+          }
+        };
+        attemptPlay(audio);
       };
 
       setupAudio();

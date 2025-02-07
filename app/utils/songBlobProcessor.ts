@@ -1,6 +1,8 @@
 import { blobStorage } from './blobStorage';
 import { serviceWorkerManager } from './serviceWorkerManager';
 
+const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
 export interface Song {
   id: string;
   title: string;
@@ -26,6 +28,22 @@ export class SongBlobProcessor {
     return SongBlobProcessor.instance;
   }
 
+  public async getStreamURL(id: string) {
+    // Fetch to the server
+    const res = await fetch(`${NEXT_PUBLIC_BASE_URL}/v2/youtube/url?v=${id}`);
+    const data : {
+      success: boolean,
+      url: string,
+      videoId: string
+    } = await res.json();
+
+    if(data.success) {
+      return data;
+    } else {
+      return null;
+    }
+  }
+
   public async getSongBlobUrl(
     song: Song, 
     options: SongBlobProcessorOptions
@@ -36,6 +54,15 @@ export class SongBlobProcessor {
       nextSong, 
       prefetchNext = true 
     } = options;
+
+    // Convert song url (depricated) to song_get_url
+    const song_url = await this.getStreamURL(song.id)
+    
+    if(!song_url) {
+      return "";
+    }
+
+    song.url = song_url.url;
 
     // Prevent multiple processing for the same song
     if (processingUrls.has(song.id)) {
