@@ -69,7 +69,7 @@ function Search() {
 
       try {
         console.log('Fetching search results for query:', queryParam);
-        const fullUrl = `${BASE_URL}/search?query=${encodeURIComponent(queryParam)}`;
+        const fullUrl = `${BASE_URL}/v1/youtube/search?query=${encodeURIComponent(queryParam)}`;
         console.log('Full URL:', fullUrl);
 
         const response = await fetch(fullUrl, {
@@ -130,7 +130,6 @@ function Search() {
       id: result.videoId,
       title: result.name,
       artist: result.artist.name,
-      url: `${BASE_URL}/video?v=${result.videoId}`,
       albumArt: getLargestAlbumArt(result.thumbnails)?.url || '/placeholder-album.png',
       duration: result.duration
     };
@@ -140,7 +139,6 @@ function Search() {
       id: r.videoId,
       title: r.name,
       artist: r.artist.name,
-      url: `${BASE_URL}/video?v=${r.videoId}`,
       albumArt: getLargestAlbumArt(r.thumbnails)?.url || '/placeholder-album.png',
       duration: r.duration
     }));
@@ -161,7 +159,6 @@ function Search() {
       title: result.name,
       artist: result.artist.name,
       albumArt: result.thumbnails[0]?.url,
-      url: `${BASE_URL}/video?v=${result.videoId}`,
       duration: result.duration
     };
 

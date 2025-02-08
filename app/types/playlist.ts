@@ -1,11 +1,4 @@
-export interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  url: string;
-  duration?: number;
-  albumArt?: string;
-}
+import { Song } from "./song";
 
 export interface Playlist {
   id: string;

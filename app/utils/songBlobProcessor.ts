@@ -1,13 +1,8 @@
+import { Song } from '../types/song';
 import { blobStorage } from './blobStorage';
 import { serviceWorkerManager } from './serviceWorkerManager';
 
 const NEXT_PUBLIC_BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-
-export interface Song {
-  id: string;
-  title: string;
-  url: string;
-}
 
 export interface SongBlobProcessorOptions {
   processingUrls: Set<string>;
@@ -30,18 +25,19 @@ export class SongBlobProcessor {
 
   public async getStreamURL(id: string) {
     // Fetch to the server
-    const res = await fetch(`${NEXT_PUBLIC_BASE_URL}/v2/youtube/url?v=${id}`);
-    const data : {
-      success: boolean,
-      url: string,
-      videoId: string
-    } = await res.json();
+    // const res = await fetch(`${NEXT_PUBLIC_BASE_URL}/v1/youtube/stream?v=${id}`);
+    // const data : {
+    //   success: boolean,
+    //   url: string,
+    //   videoId: string
+    // } = await res.json();
 
-    if(data.success) {
-      return data;
-    } else {
-      return null;
-    }
+    // if(data.success) {
+    //   return data;
+    // } else {
+    //   return null;
+    // }
+    return `${NEXT_PUBLIC_BASE_URL}/v1/youtube/stream?v=${id}`
   }
 
   public async getSongBlobUrl(
@@ -58,16 +54,18 @@ export class SongBlobProcessor {
     // Convert song url (depricated) to song_get_url
     const song_url = await this.getStreamURL(song.id)
     
+    console.log(song_url)
+
     if(!song_url) {
       return "";
     }
 
-    song.url = song_url.url;
+    // const song_url = song_url.url;
 
     // Prevent multiple processing for the same song
     if (processingUrls.has(song.id)) {
       console.log(`[getSongBlobUrl] Song ${song.title} is already being processed. Skipping.`);
-      return song.url;
+      return song_url;
     }
 
     // Check if blob is stored in cache
@@ -90,7 +88,7 @@ export class SongBlobProcessor {
     }
 
     // Immediately return the original URL
-    const originalUrl = song.url;
+    const originalUrl = song_url;
 
     // Create a background promise for processing
     const processingPromise = new Promise<string>(async (resolve, reject) => {
@@ -103,7 +101,7 @@ export class SongBlobProcessor {
         // Use Service Worker to process blob with progress tracking
         const { blobUrl, error } = await serviceWorkerManager.processBlob(
           {
-            url: song.url,
+            url: song_url,
             songId: song.id,
             songTitle: song.title
           },

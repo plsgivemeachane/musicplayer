@@ -4,5 +4,4 @@ export interface Song {
   artist: string;
   duration: number;
   albumArt?: string;
-  url: string;
 }

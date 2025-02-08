@@ -75,11 +75,11 @@ export default function Home() {
 
     // If no playlists exist, create default playlists
     if (storedPlaylists.length === 0) {
-      const defaultPlaylists = [
-        // playlistManager.createPlaylist('Liked Songs'),
-        playlistManager.createPlaylist('Daily Mix'),
-        playlistManager.createPlaylist('Discover Weekly')
-      ];
+      // const defaultPlaylists = [
+      //   // playlistManager.createPlaylist('Liked Songs'),
+      //   playlistManager.createPlaylist('Daily Mix'),
+      //   playlistManager.createPlaylist('Discover Weekly')
+      // ];
       
       // Ensure Favorites playlist exists with a predictable ID
       const favoritesPlaylist = {
@@ -93,7 +93,7 @@ export default function Home() {
       const updatedPlaylists = [...currentPlaylists, favoritesPlaylist];
       localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
 
-      setPlaylists([...defaultPlaylists, favoritesPlaylist]);
+      setPlaylists([...updatedPlaylists]);
     }
   }, []);
 

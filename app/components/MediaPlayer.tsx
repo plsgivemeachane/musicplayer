@@ -18,7 +18,6 @@ interface Song {
   title: string;
   artist: string;
   duration: number;
-  url: string;
   albumArt?: string;
 }
 
@@ -125,6 +124,8 @@ export default function MediaPlayer() {
       const setupAudio = async () => {
         // Attempt to fetch song URL as blob, and cache it
         const blobUrl = await getSongBlobUrl(currentSong, true);
+
+        console.log(blobUrl)
         
         // Set the audio source to blob URL
         audio.src = blobUrl;
