@@ -1,0 +1,49 @@
+pipeline:
+  identifier: Build_plsgivemeachane_musicplayer_1746456564890
+  name: Build musicplayer
+  orgIdentifier: default
+  projectIdentifier: default_project
+  properties:
+    ci:
+      codebase:
+        build: <+input>
+        connectorRef: account.Github_OAuth_1746456543545
+        repoName: plsgivemeachane/musicplayer
+  stages:
+    - stage:
+        identifier: build1
+        name: build
+        spec:
+          caching:
+            enabled: true
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: installdependencies
+                  name: install dependencies
+                  spec:
+                    command: npm install
+                  timeout: ""
+                  type: Run
+              - step:
+                  identifier: lint
+                  name: lint
+                  spec:
+                    command: npm run lint
+                  timeout: ""
+                  type: Run
+              - step:
+                  identifier: build
+                  name: build
+                  spec:
+                    command: npm run build
+                  timeout: ""
+                  type: Run
+          platform:
+            arch: Amd64
+            os: Linux
+          runtime:
+            spec: {}
+            type: Cloud
+        type: CI
