@@ -1,14 +1,13 @@
 'use client'
 import Image from "next/image";
 import { useState, useRef, useEffect } from 'react';
-import { FaSearch, FaPlus } from 'react-icons/fa';
+import { Search, Plus, Play, ChevronRight, Sparkles } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useUser } from "@clerk/nextjs";
 import { usePlayer } from './context/PlayerContext';
-import MediaPlayer from "./components/MediaPlayer";
-import Navigation from "./components/Navigation";
+import { useQueue } from './context/QueueContext';
 import { PrefetchKind } from "next/dist/client/components/router-reducer/router-reducer-types";
-import StarfallBackground from "./components/StarfallBackground";
+import { motion, AnimatePresence } from 'framer-motion';
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL + "/7860";
 
@@ -61,34 +60,23 @@ class PlaylistManager {
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const playlistManager = new PlaylistManager();
   const router = useRouter();
   const { isLoaded, isSignedIn, user } = useUser()
-  const { playSong } = usePlayer();
+  const { playSong, currentSong, isPlaying } = usePlayer();
+  const { addToQueue } = useQueue();
 
   useEffect(() => {
-    // Load playlists from local storage on component mount
     const storedPlaylists = playlistManager.getPlaylists();
-    console.log(storedPlaylists)
     setPlaylists(storedPlaylists);
 
-    // If no playlists exist, create default playlists
     if (storedPlaylists.length === 0) {
-      // const defaultPlaylists = [
-      //   // playlistManager.createPlaylist('Liked Songs'),
-      //   playlistManager.createPlaylist('Daily Mix'),
-      //   playlistManager.createPlaylist('Discover Weekly')
-      // ];
-      
-      // Ensure Favorites playlist exists with a predictable ID
       const favoritesPlaylist = {
         id: 'favorites',
-        name: 'Favorites',
+        name: 'Yêu thích',
         songs: []
       };
       
-      // Save favorites playlist to localStorage
       const currentPlaylists = JSON.parse(localStorage.getItem('playlists') || '[]');
       const updatedPlaylists = [...currentPlaylists, favoritesPlaylist];
       localStorage.setItem('playlists', JSON.stringify(updatedPlaylists));
@@ -99,20 +87,23 @@ export default function Home() {
 
   if (!isLoaded) {
     return (
-      <div>
-        <h1>Loading</h1>
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-500/30 border-t-primary-500 rounded-full"
+        />
       </div>
     )
   }
 
   const createNewPlaylist = () => {
-    const newPlaylist = playlistManager.createPlaylist(`New Playlist ${playlists.length + 1}`, `playlist-${playlists.length + 1}`);
+    const newPlaylist = playlistManager.createPlaylist(`Playlist mới ${playlists.length + 1}`, `playlist-${playlists.length + 1}`);
     setPlaylists([...playlists, newPlaylist]);
   };
 
-  const handleSearch = async () => {
+  const handleSearch = () => {
     if (searchQuery.trim()) {
-      console.log('Searching for:', searchQuery);
       router.push(`/search?query=${encodeURIComponent(searchQuery)}`);
     }
   };
@@ -136,66 +127,123 @@ export default function Home() {
   }
 
   const getImageForPlaylist = (playlist: Playlist) => {
-
-    if (playlist.songs.length == 0) {
-      // return example image 
-      return "https://picsum.photos/64/64?random=" + playlist.id
+    if (playlist.songs.length === 0) {
+      return `https://picsum.photos/seed/${playlist.id}/200/200`;
     }
+    return playlist.songs[0].albumArt ?? "";
+  }
 
-    // Get random image from playlist'songs art
-    // const randomIndex = Math.floor(Math.random() * playlist.songs.length);
-    return playlist.songs[0].albumArt??"";
+  const handlePlayPlaylist = (playlist: Playlist) => {
+    if (playlist.songs.length > 0) {
+      addToQueue(playlist.songs);
+      playSong(playlist.songs[0]);
+    }
   }
 
   return (
-    <div className="min-h-screen p-4">
-      {/* <StarfallBackground /> */}
-      {/* Main Content */}
-      <div className="max-w-md mx-auto">
-        {/* Top Bar */}
-        <div className="flex flex-col justify-between items-center mb-8">
-          <div className="flex flex-col space-y-4 items-center w-full">
-            {/* Search Input */}
-            <div className="relative w-full">
+    <div className="min-h-screen p-4 md:p-6 pb-32">
+      <div className="max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+            {getGreeting()}{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-accent-400">
+              {user?.firstName || 'bạn'}
+            </span>
+          </h1>
+          <p className="text-gray-400">Hôm nay bạn muốn nghe gì?</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full blur-lg opacity-0 group-focus-within:opacity-30 transition-opacity duration-300" />
+            <div className="relative">
               <input 
                 type="text" 
-                placeholder="Tìm kiếm" 
+                placeholder="Tìm kiếm bài hát..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onMouseEnter={() => router.prefetch(`/search`)}
-                className="bg-neutral-800 text-white px-4 py-2 pl-10 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-search pl-12 pr-16 py-4 text-base"
               />
-              <FaSearch 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
+              <Search 
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-primary-400 transition-colors"
                 onClick={handleSearch}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-14 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {!user && <div className="fixed top-0 left-0 right-0 bottom-0 flex items-center justify-center space-x-4 mt-24">
-            <h1 className="md:text-4xl text-xl font-bold">Đăng nhập để sử dụng playlists</h1>
-        </div>}
-        <div className={user ? "" : "blur-md"}>
-          {!user && <div className="fixed top-0 left-0 right-0 bottom-0 pointer-events-auto cursor-not-allowed"></div>}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold">{getGreeting()} {user?.firstName} </h2>
-            <button 
-              // onClick={createNewPlaylist}
-              onClick={() => alert("You just found a underdeveloped feature!")}
-              className="bg-green-500 text-black p-2 rounded-full hover:bg-green-600"
+        {!user && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/80 backdrop-blur-sm"
+          >
+            <div className="glass-card p-8 text-center max-w-md mx-4">
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary-500 to-accent-500 rounded-2xl flex items-center justify-center">
+                <Sparkles className="text-white w-8 h-8" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">
+                Đăng nhập để tiếp tục
+              </h2>
+              <p className="text-gray-400 mb-6">
+                Tạo playlist, lưu yêu thích và nghe nhạc không gián đoạn
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        <div className={user ? "" : "blur-sm opacity-50 pointer-events-none"}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="flex items-center justify-between mb-6"
+          >
+            <h2 className="text-xl font-bold text-white">Playlist của bạn</h2>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={createNewPlaylist}
+              className="btn-glow text-sm py-2 px-4"
             >
-              <FaPlus />
-            </button>
-          </div>
+              <Plus className="inline mr-2 w-4 h-4" />
+              Tạo mới
+            </motion.button>
+          </motion.div>
 
-          {/* Playlists List */}
-          <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="grid grid-cols-2 md:grid-cols-3 gap-4"
+          >
             {playlists.map((playlist, index) => (
-              <div 
-                key={playlist.id} 
-                className="bg-neutral-800 p-4 rounded-lg flex items-center space-x-4 hover:bg-neutral-700 cursor-pointer"
+              <motion.div
+                key={playlist.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * (index + 1) }}
+                whileHover={{ y: -4 }}
+                className="playlist-card group"
                 onClick={() => router.push(`/playlist?playlistId=${playlist.id}`)}
                 onMouseEnter={() => {
                   router.prefetch(`/playlist?playlistId=${playlist.id}`, {
@@ -203,28 +251,120 @@ export default function Home() {
                   })
                 }}
               >
+                <div className="relative aspect-square overflow-hidden">
+                  <img 
+                    src={getImageForPlaylist(playlist)} 
+                    alt={playlist.name}
+                    className="w-full h-full object-cover transition-transform duration-500"
+                    style={{ aspectRatio: '1/1' }}
+                  />
+                  
+                  <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-60" />
+                  
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    whileHover={{ opacity: 1, y: 0 }}
+                    className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-300"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayPlaylist(playlist);
+                    }}
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="w-14 h-14 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full flex items-center justify-center shadow-glow"
+                    >
+                      <Play className="text-white w-6 h-6 ml-1" />
+                    </motion.button>
+                  </motion.div>
+                </div>
+
+                <div className="p-3">
+                  <h3 className="font-semibold text-white truncate group-hover:text-primary-400 transition-colors">
+                    {playlist.name}
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {playlist.songs.length} bài hát
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+
+            {playlists.length < 4 && (
+              <motion.button
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * (playlists.length + 1) }}
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={createNewPlaylist}
+                className="aspect-square rounded-xl bg-gray-800/50 border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-3 hover:border-primary-500/50 hover:bg-gray-700/50 transition-all duration-300"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary-500/20 flex items-center justify-center">
+                  <Plus className="text-primary-400 w-6 h-6" />
+                </div>
+                <span className="text-sm font-medium text-gray-400">Tạo playlist mới</span>
+              </motion.button>
+            )}
+          </motion.div>
+
+          {currentSong && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="mt-10"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Play className="text-primary-400" />
+                <h2 className="text-xl font-bold text-white">Đang phát</h2>
+              </div>
+              
+              <div className="glass-card p-4 flex items-center gap-4">
                 <img 
-                  src={getImageForPlaylist(playlist)} 
-                  alt={playlist.name}
-                  width={64}
-                  height={64}
-                  className="rounded-lg"
+                  src={currentSong.albumArt || '/placeholder-album.png'}
+                  alt={currentSong.title}
+                  className="w-16 h-16 rounded-lg object-cover shadow-lg"
                 />
-                <div>
-                  <h3 className="font-semibold">{playlist.name}</h3>
-                  <p className="text-neutral-400 text-sm">{playlist.songs.length} bài</p>
+                <div className="flex-grow">
+                  <h3 className="font-semibold text-white truncate">{currentSong.title}</h3>
+                  <p className="text-sm text-gray-400">{currentSong.artist}</p>
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                  isPlaying 
+                    ? 'bg-primary-500/20 text-primary-400' 
+                    : 'bg-gray-700 text-gray-400'
+                }`}>
+                  {isPlaying ? '▶ Đang phát' : '⏸ Tạm dừng'}
                 </div>
               </div>
-            ))}
-          </div>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mt-8 grid grid-cols-2 gap-3"
+          >
+            <button
+              onClick={() => router.push('/search')}
+              className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-primary-500/10 to-transparent border border-primary-500/20 hover:border-primary-500/40 transition-all duration-300"
+            >
+              <span className="text-sm font-medium text-white">Tìm bài hát</span>
+              <ChevronRight className="text-primary-400 w-4 h-4" />
+            </button>
+            <button
+              onClick={() => router.push('/playlist?playlistId=favorites')}
+              className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-accent-500/10 to-transparent border border-accent-500/20 hover:border-accent-500/40 transition-all duration-300"
+            >
+              <span className="text-sm font-medium text-white">Yêu thích</span>
+              <ChevronRight className="text-accent-400 w-4 h-4" />
+            </button>
+          </motion.div>
         </div>
       </div>
-
-      {/* Media Player */}
-      {/* <MediaPlayer /> */}
-
-      {/* Navigation */}
-      {/* <Navigation /> */}
     </div>
   );
 }

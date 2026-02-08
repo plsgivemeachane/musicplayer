@@ -15,6 +15,7 @@
     "@million/lint": "^1.0.14",
     "@sentry/nextjs": "^8.47.0",
     "@vercel/analytics": "^1.4.1",
+    "lucide-react": "^0.563.0",
     "motion": "^11.15.0",
     "next": "15.1.2",
     "pocketbase": "^0.24.0",

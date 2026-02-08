@@ -4,7 +4,11 @@ import React, { useEffect, useState, useRef } from 'react';
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
 import { motion, AnimatePresence } from "framer-motion";
-import { FaChevronDown, FaPlay, FaPause, FaStepBackward, FaStepForward, FaRandom, FaRetweet, FaBars, FaTrash, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeMute } from 'react-icons/fa';
+import { 
+  ChevronDown, Play, Pause, SkipBack, SkipForward, 
+  Shuffle, Repeat, Heart, Volume2, VolumeX, 
+  ListMusic
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Song } from '../types/song';
@@ -27,7 +31,6 @@ export default function FullScreenPlayer() {
     isShuffling, 
     setLooping, 
     setShuffling,
-    removeFromQueue,
     addToQueue
   } = useQueue();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
@@ -40,42 +43,41 @@ export default function FullScreenPlayer() {
   const { isLoaded, isSignedIn, user } = useUser();
   const queueRef = useRef<HTMLDivElement>(null);
   
-  // Use the audio from MediaPlayer component if possible
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Initialize volume from localStorage, default to 1 if not set
     const savedVolume = localStorage.getItem('musicPlayerVolume');
     setVolume(savedVolume ? parseFloat(savedVolume) : 1);
   }, [])
 
   useEffect(() => {
-    // Find the audio element from MediaPlayer if it exists
     const existingAudio = document.querySelector('audio') as HTMLAudioElement;
     
     if (existingAudio) {
       audioRef.current = existingAudio;
       
-      // Set up event listeners
       const handleTimeUpdate = () => {
         setCurrentTime(existingAudio.currentTime);
         setDuration(existingAudio.duration);
       };
 
-      existingAudio.addEventListener('timeupdate', handleTimeUpdate);
+      const handleLoadedMetadata = () => {
+        setDuration(existingAudio.duration);
+      };
 
-      // Cleanup
+      existingAudio.addEventListener('timeupdate', handleTimeUpdate);
+      existingAudio.addEventListener('loadedmetadata', handleLoadedMetadata);
+
       return () => {
         existingAudio.removeEventListener('timeupdate', handleTimeUpdate);
+        existingAudio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       };
     }
   }, [currentSong]);
 
   useEffect(() => {
-    // Sync volume with localStorage whenever it changes
     localStorage.setItem('musicPlayerVolume', volume.toString());
     
-    // Also sync with audio element
     if (audioRef.current) {
       audioRef.current.volume = volume;
     }
@@ -90,12 +92,10 @@ export default function FullScreenPlayer() {
   const toggleMute = () => {
     if (audioRef.current) {
       if (audioRef.current.muted) {
-        // Unmute and restore previous volume
         audioRef.current.muted = false;
         const restoreVolume = previousVolume > 0 ? previousVolume : 1;
         setVolume(restoreVolume);
       } else {
-        // Mute and save current volume
         audioRef.current.muted = true;
         setPreviousVolume(volume);
         setVolume(0);
@@ -104,211 +104,307 @@ export default function FullScreenPlayer() {
   };
 
   const formatTime = (time: number) => {
-    if (isNaN(time)) return '0:00';
+    if (isNaN(time) || !isFinite(time)) return '0:00';
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
   };
 
-  // If no current song, return null to prevent rendering
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const percent = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = percent * duration;
+  };
+
   if (!currentSong) {
-    // Return home
     router.push('/');
-    return
-    // return null;
+    return null;
   }
 
   if(!isLoaded) {
-    return null
+    return (
+      <div className="fixed inset-0 bg-gray-950 flex items-center justify-center">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-500/30 border-t-primary-500 rounded-full"
+        />
+      </div>
+    )
   }
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-black z-50 flex flex-col"
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-gray-950 z-50 flex flex-col overflow-hidden"
     >
-      {/* Blurry Background */}
-      {currentSong?.albumArt && (
+      {/* Dynamic Background */}
+      <div className="absolute inset-0 overflow-hidden">
         <div 
-          className="absolute inset-0 bg-cover bg-center filter blur-2xl opacity-30" 
+          className="absolute inset-0 bg-cover bg-center"
           style={{ 
-            backgroundImage: `url(${currentSong.albumArt})`,
-            transform: 'scale(1.1)'
+            backgroundImage: `url(${currentSong.albumArt || '/placeholder-album.png'})`,
+            filter: 'blur(80px) brightness(0.4)',
+            transform: 'scale(1.2)'
           }}
         />
-      )}
-
-      {/* Blur Overlay when Queue is Open */}
-      {showQueue && (
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-900/30 via-gray-900/50 to-gray-950" />
+        
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30"
+          animate={{
+            scale: [1, 1.2, 1],
+            opacity: [0.3, 0.5, 0.3]
+          }}
+          transition={{ duration: 4, repeat: Infinity }}
+          className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-accent-500/20"
         />
-      )}
+      </div>
 
-      {/* Close and Queue Toggle Buttons */}
-      <div className="absolute top-10 left-6 right-6 flex justify-between items-center z-40">
-        <button 
+      <AnimatePresence>
+        {showQueue && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-30"
+            onClick={() => setShowQueue(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <div className="relative z-40 flex items-center justify-between px-6 py-6">
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => router.back()} 
-          className="text-white text-2xl"
+          className="icon-btn"
         >
-          <FaChevronDown />
-        </button>
-        <div className="flex items-center space-x-4">
-          {/* Favorite Button */}
-          {isSignedIn && <button 
-            onClick={() => {
-              if (currentSong) {
-                if (isFavorite(currentSong.id)) {
-                  removeFromFavorites(currentSong.id);
-                } else {
-                  addToFavorites(currentSong);
+          <ChevronDown className="w-5 h-5" />
+        </motion.button>
+
+        <div className="text-sm font-medium text-gray-400 uppercase tracking-wider">
+          Đang phát
+        </div>
+
+        <div className="flex items-center gap-3">
+          {isSignedIn && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                if (currentSong) {
+                  if (isFavorite(currentSong.id)) {
+                    removeFromFavorites(currentSong.id);
+                  } else {
+                    addToFavorites(currentSong);
+                  }
                 }
-              }
-            }}
-            className="text-red-500 hover:text-red-400 transition-colors"
-          >
-            {currentSong && isFavorite(currentSong.id) ? (
-              <FaHeart size={24} />
-            ) : (
-              <FaRegHeart size={24} />
-            )}
-          </button>}
+              }}
+              className={`icon-btn ${isFavorite(currentSong?.id ?? '') ? 'text-rose-500' : ''}`}
+            >
+              {currentSong && isFavorite(currentSong.id) ? (
+                <Heart className="w-5 h-5 fill-current" />
+              ) : (
+                <Heart className="w-5 h-5" />
+              )}
+            </motion.button>
+          )}
           
-          <button 
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShowQueue(!showQueue)}
-            className="text-white text-2xl"
+            className={`icon-btn ${showQueue ? 'active' : ''}`}
           >
-            <FaBars />
-          </button>
+            <ListMusic className="w-5 h-5" />
+          </motion.button>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-grow flex flex-col z-20 overflow-y-auto
-                      [&::-webkit-scrollbar]:w-2
-                    [&::-webkit-scrollbar-track]:bg-gray-100
-                    [&::-webkit-scrollbar-thumb]:bg-gray-300
-                    dark:[&::-webkit-scrollbar-track]:bg-neutral-700
-                    dark:[&::-webkit-scrollbar-thumb]:bg-neutral-500">
-        {/* Album Art */}
-        <div className="flex items-center justify-center mt-20">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-md aspect-square"
-          >
-            <img 
-              src={currentSong.albumArt || '/placeholder-album.png'} 
-              alt={currentSong.title}
-              width={500}
-              height={500}
-              className="rounded-2xl shadow-xl shadow-black border-none"
-            />
-          </motion.div>
-        </div>
-
-        {/* Song Info */}
-        <div className="text-center mb-4">
-          <h1 className="text-2xl font-bold text-white">{currentSong.title}</h1>
-          <p className="text-neutral-400">{currentSong.artist}</p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="px-8 mb-4">
-          <div className="flex items-center space-x-4">
-            <span className="text-neutral-400 text-sm w-12 text-right">
-              {formatTime(currentTime)}
-            </span>
-            <div className="flex-grow bg-neutral-700 h-1 rounded-full relative">
-              <div 
-                className="absolute left-0 top-0 bottom-0 bg-white rounded-full" 
-                style={{ 
-                  width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` 
-                }}
-              />
-            </div>
-            <span className="text-neutral-400 text-sm w-12">
-              {formatTime(duration)}
-            </span>
-          </div>
-        </div>
-
-        {/* Volume Control */}
-        <div className="px-8 mb-4 lg:flex items-center space-x-4 hidden">
-          <button 
-            onClick={toggleMute}
-            className="text-white"
-          >
-            {volume > 0 ? <FaVolumeUp size={24} /> : <FaVolumeMute size={24} />}
-          </button>
-          <div className="relative flex-grow h-1 bg-neutral-700 rounded-full">
-            <div 
-              className="absolute left-0 top-0 bottom-0 bg-white rounded-full" 
-              style={{ 
-                width: `${volume * 100}%` 
+      <div className="relative z-20 flex-grow flex flex-col items-center px-6 overflow-y-auto no-scrollbar">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 20 }}
+          className="mt-4 md:mt-8"
+        >
+          <div className="relative">
+            <motion.div
+              animate={{ rotate: isPlaying ? 360 : 0 }}
+              transition={{ 
+                duration: isPlaying ? 20 : 0.5, 
+                repeat: isPlaying ? Infinity : 0,
+                ease: "linear"
               }}
+              className="w-[280px] h-[280px] md:w-[340px] md:h-[340px] rounded-2xl overflow-hidden shadow-2xl"
+              style={{ boxShadow: '0 0 30px rgba(16, 185, 129, 0.3)' }}
+            >
+              <img 
+                src={currentSong.albumArt || '/placeholder-album.png'} 
+                alt={currentSong.title}
+                width={340}
+                height={340}
+                className="w-full h-full object-cover"
+              />
+            </motion.div>
+            
+            {isPlaying && (
+              <motion.div
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full text-xs font-medium text-white"
+                style={{ boxShadow: '0 0 20px rgba(16, 185, 129, 0.4)' }}
+              >
+                ♪ Now Playing
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mt-8 text-center max-w-md"
+        >
+          <h1 className="text-2xl md:text-3xl font-bold text-white truncate">
+            {currentSong.title}
+          </h1>
+          <p className="text-gray-400 mt-2 text-lg">
+            {currentSong.artist}
+          </p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="w-full max-w-md mt-8"
+        >
+          <div 
+            className="relative h-2 bg-gray-700/50 rounded-full cursor-pointer overflow-hidden group"
+            onClick={handleSeek}
+          >
+            <motion.div 
+              className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full"
+              style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
             />
-            <input 
-              type="range" 
-              min={0} 
-              max={1} 
-              step={0.01} 
-              value={volume} 
-              onChange={handleVolumeChange} 
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            
+            <div 
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+              style={{ left: `calc(${duration > 0 ? (currentTime / duration) * 100 : 0}% - 8px)` }}
             />
           </div>
-        </div>
 
-        {/* Playback Controls */}
-        <div className="flex justify-center items-center space-x-8 mb-24">
-          <button 
+          <div className="flex justify-between mt-2 text-xs text-gray-500">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="flex items-center justify-center gap-6 md:gap-8 mt-8 mb-8"
+        >
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setShuffling(!isShuffling)}
-            className={`text-${isShuffling ? 'white' : 'neutral-400'} hover:text-white`}
+            className={`icon-btn w-10 h-10 ${isShuffling ? 'active' : ''}`}
           >
-            <FaRandom size={24} />
-          </button>
-          <button 
+            <Shuffle className="w-5 h-5" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => {
               const prevTrack = prevSong();
               if (prevTrack) {
                 playSong(prevTrack);
               }
             }}
-            className="text-white"
+            className="icon-btn w-12 h-12"
           >
-            <FaStepBackward size={32} />
-          </button>
-          <button 
+            <SkipBack className="w-6 h-6" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.95 }}
             onClick={togglePlayPause}
-            className="bg-white text-black p-4 rounded-full hover:bg-neutral-200"
+            className="w-16 h-16 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full flex items-center justify-center"
+            style={{ boxShadow: '0 0 30px rgba(16, 185, 129, 0.4)' }}
           >
-            {isPlaying ? <FaPause size={32} /> : <FaPlay size={32} />}
-          </button>
-          <button 
+            {isPlaying ? (
+              <Pause className="w-7 h-7 text-white" />
+            ) : (
+              <Play className="w-7 h-7 text-white ml-1" />
+            )}
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => {
               const nextTrack = nextSong();
               if (nextTrack) {
                 playSong(nextTrack);
               }
             }}
-            className="text-white"
+            className="icon-btn w-12 h-12"
           >
-            <FaStepForward size={32} />
-          </button>
-          <button 
+            <SkipForward className="w-6 h-6" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
             onClick={() => setLooping(!isLooping)}
-            className={`text-${isLooping ? 'white' : 'neutral-400'} hover:text-white`}
+            className={`icon-btn w-10 h-10 ${isLooping ? 'active' : ''}`}
           >
-            <FaRetweet size={24} />
+            <Repeat className="w-5 h-5" />
+          </motion.button>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="flex items-center gap-4 mb-8"
+        >
+          <button 
+            onClick={toggleMute}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            {volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
-        </div>
+          
+          <div className="w-32 h-1.5 bg-gray-700/50 rounded-full overflow-hidden cursor-pointer group">
+            <div 
+              className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-100"
+              style={{ width: `${volume * 100}%` }}
+            />
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.01" 
+              value={volume} 
+              onChange={handleVolumeChange} 
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
+        </motion.div>
       </div>
 
-      {/* Queue Overlay */}
       <AnimatePresence>
         {showQueue && (
           <motion.div
@@ -316,49 +412,64 @@ export default function FullScreenPlayer() {
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ type: 'tween' }}
-            className="fixed bottom-0 left-0 right-0 bg-neutral-900 rounded-t-2xl h-[70%] z-40 overflow-hidden"
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl rounded-t-3xl h-[60%] md:h-[50%] z-40 flex flex-col overflow-hidden"
           >
-            <div className="flex justify-between items-center p-4 border-b border-neutral-800">
+            <div className="flex items-center justify-between p-6 border-t border-white/5">
               <h2 className="text-xl font-bold text-white">Hàng đợi</h2>
+              <span className="text-sm text-gray-400">{queue.length} bài hát</span>
             </div>
-            <div className="overflow-y-auto h-[calc(100%-60px)] pb-16">
+
+            <div className="flex-grow overflow-y-auto p-4 space-y-2">
               {queue.map((song, index) => (
                 <motion.div
                   key={song.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className={`flex items-center justify-between p-4 border-b border-neutral-800 ${
-                    currentSong.id === song.id ? 'bg-neutral-800' : ''
-                  }`}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  className={`
+                    flex items-center gap-4 p-3 rounded-xl cursor-pointer
+                    transition-all duration-200
+                    ${currentSong.id === song.id 
+                      ? 'bg-primary-500/20 border border-primary-500/30' 
+                      : 'hover:bg-gray-800/50'
+                    }
+                  `}
                   onClick={() => {
-                    addToQueue([song]);
+                    addToQueue([song], index);
                     playSong(song);
                     setShowQueue(false);
                   }}
                 >
-                  <div className="flex items-center space-x-4">
-                    <img 
-                      src={song.albumArt || '/placeholder-album.png'}
-                      alt={song.title}
-                      width={48}
-                      height={48}
-                      className="rounded-md"
-                    />
-                    <div>
-                      <p className="text-white font-semibold truncate max-w-[200px]">{song.title}</p>
-                      <p className="text-neutral-400 text-sm">{song.artist}</p>
-                    </div>
+                  <img 
+                    src={song.albumArt || '/placeholder-album.png'}
+                    alt={song.title}
+                    className={`w-12 h-12 rounded-lg object-cover ${currentSong.id === song.id ? 'ring-2 ring-primary-500' : ''}`}
+                  />
+                  
+                  <div className="flex-grow min-w-0">
+                    <p className={`font-medium truncate ${currentSong.id === song.id ? 'text-primary-400' : 'text-white'}`}>
+                      {song.title}
+                    </p>
+                    <p className="text-sm text-gray-400 truncate">{song.artist}</p>
                   </div>
-                  {/* <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeFromQueue(index);
-                    }}
-                    className="text-neutral-400 hover:text-white"
-                  >
-                    <FaTrash />
-                  </button> */}
+
+                  {currentSong.id === song.id && (
+                    <motion.div
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="flex gap-0.5 items-end h-4"
+                    >
+                      {[0.4, 0.7, 0.5, 0.9, 0.6].map((h, i) => (
+                        <motion.div
+                          key={i}
+                          className="w-1 bg-primary-500 rounded-full"
+                          animate={{ height: [4, h * 10 + 4, 4] }}
+                          transition={{ duration: 0.4, repeat: Infinity, delay: i * 0.08 }}
+                        />
+                      ))}
+                    </motion.div>
+                  )}
                 </motion.div>
               ))}
             </div>

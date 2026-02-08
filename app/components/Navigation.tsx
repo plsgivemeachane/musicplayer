@@ -1,123 +1,87 @@
 'use client'
 
-import Link from 'next/link'
-import { FaHome, FaMusic, FaHeart, FaUser } from 'react-icons/fa'
-import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/nextjs"
-import { SendOptions } from 'pocketbase'
-import { pb } from '@/lib/pocketbase'
-import { useEffect } from 'react'
+import { Home, Search, Library, Plus } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
-export default function Navigation() {
+export function Navigation() {
+  const pathname = usePathname();
+  const router = useRouter();
 
-  const { isLoaded, isSignedIn ,user } = useUser()
+  const navItems = [
+    { href: '/', icon: Home, label: 'Trang chủ' },
+    { href: '/search', icon: Search, label: 'Tìm kiếm' },
+    { href: '/library', icon: Library, label: 'Thư viện' },
+  ];
 
+  const handleCreatePlaylist = () => {
+    const params = new URLSearchParams(window.location.search);
+    const fromPlayer = params.get('from') === 'player';
 
+    router.push(fromPlayer ? '/?from=player' : '/');
+    
+    setTimeout(() => {
+      const event = new CustomEvent('createPlaylist');
+      window.dispatchEvent(event);
+    }, 100);
+  };
 
-  pb.beforeSend = ((url: string, options: SendOptions) => {
-    return {
-      ...options,
-      headers: {
-        ...options.headers,
-        'x-token': 'Sample token'
-      }
-    }
-  })
-
-  // get playlists of user
-  const getUserPlaylists = async () => {
-    if(!isLoaded || !isSignedIn) return
-    const query = `userID="${user.id}"`
-    console.log(query)
-    try {  
-      const userPlaylists = await pb.collection('playlists').getFirstListItem(query)
-      return userPlaylists
-    } catch(e: any) {
-      console.log(await e)
-      console.log("No records found! create 1")
-      try {
-        if(!localStorage.getItem('playlists')) return;
-        const data = {
-          "userID": user.id,
-          "Storages": localStorage.getItem('playlists')
-        };
-
-        console.log(data)
-        // Create
-        const record = await pb.collection('playlists').create(data);
-        return record
-        console.log("Success",record)
-      } finally {
-        console.log("Done")
-      }
-    }
-
-  }
-
-  useEffect(() => {
-    const syncUserPlaylists = async () => {
-      if (!isSignedIn) return;
-      
-      try {
-        const userPlaylists = await getUserPlaylists();
-        if(!userPlaylists) return
-        // Update client
-        console.log(userPlaylists.Storages)
-
-        localStorage.setItem('playlists', JSON.stringify(userPlaylists.Storages));
-
-        // console.log('User Playlists:', userPlaylists);
-
-        // // Sync local storage to server
-        // if (localStorage.getItem('playlists')) {
-        //   const data = {
-        //     "userID": user.id,
-        //     "Storages": localStorage.getItem('playlists')
-        //   };
-          
-
-        //   const record = await pb.collection('playlists').update(userPlaylists.id, data);
-        //   console.log("Updated",record)
-        // }
-      } catch (error) {
-        console.error('Error syncing playlists:', error);
-      }
-    };
-
-    syncUserPlaylists();
-  }, [isSignedIn, user?.id])
-
-  if(!isLoaded) return
-
-  
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-md border-t border-neutral-800 z-[1000]">
-      <div className="flex justify-between items-center px-6 py-3">
-        <Link prefetch={true} href="/" className="flex flex-col items-center text-neutral-400 hover:text-white">
-          <FaHome className="text-xl" />
-          <span className="text-xs mt-1">Nhà</span>
-        </Link>
-        <Link prefetch={true} href="/library" className="flex flex-col items-center text-neutral-400 hover:text-white">
-          <FaMusic className="text-xl" />
-          <span className="text-xs mt-1">Thư viện</span>
-        </Link>
-        <Link prefetch={true} href="/playlist?playlistId=favorites" className="flex flex-col items-center text-neutral-400 hover:text-white">
-          <FaHeart className="text-xl" />
-          <span className="text-xs mt-1">Yêu thích</span>
-        </Link>
-        <div className="flex flex-col items-center text-neutral-400 hover:text-white">
-          <SignedOut>
-            <SignInButton mode="modal">
-              <button className="flex flex-col items-center">
-                <FaUser className="text-xl" />
-                <span className="text-xs mt-1">Đăng nhập</span>
-              </button>
-            </SignInButton>
-          </SignedOut>
-          <SignedIn>
-            <UserButton/>
-          </SignedIn>
-        </div>
+    <motion.div 
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-white/5 z-50 pb-safe"
+    >
+      <div className="flex items-center justify-around px-2 py-2 max-w-md mx-auto">
+        {navItems.map((item) => {
+          const isActive = pathname === item.href;
+          
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-200"
+            >
+              <motion.div
+                whileTap={{ scale: 0.9 }}
+                className={`p-2 rounded-xl transition-colors ${
+                  isActive 
+                    ? 'bg-primary-500/20 text-primary-400' 
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+                }`}
+              >
+                <item.icon className="w-5 h-5" />
+              </motion.div>
+              
+              <span className={`text-[10px] font-medium ${
+                isActive ? 'text-primary-400' : 'text-gray-500'
+              }`}>
+                {item.label}
+              </span>
+
+              {isActive && (
+                <motion.div
+                  layoutId="nav-indicator"
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary-400 rounded-full"
+                />
+              )}
+            </Link>
+          );
+        })}
+
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={handleCreatePlaylist}
+          className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/50 transition-all duration-200"
+        >
+          <div className="p-2 rounded-xl bg-gray-800/50">
+            <Plus className="w-5 h-5" />
+          </div>
+          <span className="text-[10px] font-medium text-gray-500">Tạo mới</span>
+        </motion.button>
       </div>
-    </nav>
-  )
+    </motion.div>
+  );
 }

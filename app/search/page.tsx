@@ -1,15 +1,12 @@
 'use client'
 
-import Image from "next/image";
 import { useState, useEffect, Suspense } from 'react';
-import { FaPlay, FaPause, FaHeart, FaPlus, FaSearch, FaRegHeart } from 'react-icons/fa';
 import { useSearchParams } from 'next/navigation';
+import { Search as SearchIcon, Music, X, Loader2 } from 'lucide-react';
 import { usePlayer } from "../context/PlayerContext";
 import { useQueue } from '../context/QueueContext';
 import { useRouter } from 'next/navigation';
-import MediaPlayer from '../components/MediaPlayer';
-import Navigation from '../components/Navigation';
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "framer-motion";
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
 import { useUser } from "@clerk/nextjs";
@@ -39,26 +36,39 @@ interface SearchResult {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={<div>Chờ...</div>}>
-      <Search />
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-500/30 border-t-primary-500 rounded-full"
+        />
+      </div>
+    }>
+      <SearchPageContent />
     </Suspense>
   );
 }
 
-function Search() {
+function SearchPageContent() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [query, setQuery] = useState('');
   const [nestedSearchQuery, setNestedSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const searchParams = useSearchParams();
   const queryParam = searchParams.get('query') || '';
-  const { playSong } = usePlayer();
+  const { playSong, isPlaying, currentSong } = usePlayer();
   const { addToQueue } = useQueue();
   const router = useRouter();
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const { isLoaded, isSignedIn, user } = useUser();
+  const { isLoaded } = useUser();
+
+  useEffect(() => {
+    if (queryParam) {
+      setNestedSearchQuery(queryParam);
+    }
+  }, [queryParam]);
 
   useEffect(() => {
     const fetchSearchResults = async () => {
@@ -68,23 +78,17 @@ function Search() {
       setError(null);
 
       try {
-        console.log('Fetching search results for query:', queryParam);
         const fullUrl = `${BASE_URL}/v1/youtube/search?query=${encodeURIComponent(queryParam)}`;
-        console.log('Full URL:', fullUrl);
 
         const response = await fetch(fullUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
-          cache: "force-cache" // Because the song list is static
+          cache: "force-cache"
         });
         
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-
         if (!response.ok) {
-          // Handle HTTP errors
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch songs');
         }
@@ -92,17 +96,14 @@ function Search() {
         const data: SearchResult[] = await response.json();
 
         if (data.length === 0) {
-          // Redirect to no songs page
           router.push('/no-songs');
           return;
         }
 
         setSearchResults(data);
       } catch (err) {
-        // Log the error for debugging
         console.error('Search error:', err);
-        
-        // Redirect to no songs page on any error
+        setError(err instanceof Error ? err.message : 'An error occurred');
         router.push('/no-songs');
       } finally {
         setIsLoading(false);
@@ -125,7 +126,6 @@ function Search() {
   };
 
   const handlePlaySong = (result: SearchResult) => {
-    // Convert SearchResult to Song
     const song: Song = {
       id: result.videoId,
       title: result.name,
@@ -134,7 +134,6 @@ function Search() {
       duration: result.duration
     };
 
-    // Add all search results to queue
     const queueSongs: Song[] = searchResults.map(r => ({
       id: r.videoId,
       title: r.name,
@@ -143,30 +142,10 @@ function Search() {
       duration: r.duration
     }));
 
-    // Find the index of the current song in the queue
     const currentSongIndex = queueSongs.findIndex(song => song.id === result.videoId);
 
     addToQueue(queueSongs, currentSongIndex);
-    
-    // Play the selected song
     playSong(song);
-  };
-
-  const handleFavoriteToggle = (result: SearchResult) => {
-    // Convert SearchResult to Song
-    const song: Song = {
-      id: result.videoId,
-      title: result.name,
-      artist: result.artist.name,
-      albumArt: result.thumbnails[0]?.url,
-      duration: result.duration
-    };
-
-    if (isFavorite(song.id)) {
-      removeFromFavorites(song.id);
-    } else {
-      addToFavorites(song);
-    }
   };
 
   const handleSearch = () => {
@@ -181,111 +160,176 @@ function Search() {
     }
   };
 
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+  const clearSearch = () => {
+    setNestedSearchQuery('');
+    setSearchResults([]);
+    router.push('/search');
   };
-
-  // if (isLoading) {
-  //   return (
-  //     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black text-white min-h-screen flex items-center justify-center">
-  //       <p>Đang tải...</p>
-  //     </motion.div>
-  //   );
-  // }
-
-  if (error) {
-    return (
-      <div className="bg-black text-white min-h-screen p-4">
-        <p className="text-red-500">Lỗi!: {error}</p>
-      </div>
-    );
-  }
 
   if(!isLoaded) {
     return (
-      <div className="bg-black text-white min-h-screen p-4">
-        <p>Đang tải...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-950">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="w-12 h-12 border-4 border-primary-500/30 border-t-primary-500 rounded-full"
+        />
       </div>
     )
   }
 
   return (
-    <div className="bg-black text-white min-h-screen p-4">
-      {/* Main Content */}
-      <div className="max-w-md mx-auto">
-        {/* Top Bar */}
-        <div className="flex flex-col justify-between items-center mb-8">
-          <div className="flex flex-col space-y-4 items-center w-full">
-            {/* Search Input */}
-            <div className="relative w-full">
+    <div className="min-h-screen p-4 md:p-6 pb-32">
+      <div className="max-w-2xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-3xl font-bold text-white mb-2">
+            Tìm kiếm
+          </h1>
+          <p className="text-gray-400">Tìm bài hát bạn yêu thích</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="mb-8"
+        >
+          <div className="relative group">
+            <div className="absolute inset-0 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full blur-lg opacity-0 group-focus-within:opacity-30 transition-opacity duration-300" />
+            <div className="relative">
               <input 
                 type="text" 
-                placeholder="Search" 
+                placeholder="Tìm kiếm bài hát, nghệ sĩ..."
                 value={nestedSearchQuery}
                 onChange={(e) => setNestedSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="bg-neutral-800 text-white px-4 py-2 pl-10 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-search pr-20 py-4 text-base"
               />
-              <FaSearch 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
-                onClick={handleSearch}
-              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                {nestedSearchQuery && (
+                  <button
+                    onClick={clearSearch}
+                    className="text-gray-500 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={handleSearch}
+                  className="icon-btn w-9 h-9 bg-primary-500/20 hover:bg-primary-500/30 text-primary-400"
+                >
+                  <SearchIcon className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Search Results */}
-        {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(7).keys()].map((i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.1 }}
-                className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4"
-              >
-                <div className="bg-neutral-800 rounded-md h-12 w-12"></div>
-                <div className="flex-grow overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.3, delay: i * 0.1 }}
-                    className="bg-neutral-800 rounded-md h-6"
-                  ></motion.div>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.3, delay: i * 0.1 + 0.2 }}
-                    className="bg-neutral-800 rounded-md h-4 mt-2"
-                  ></motion.div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (searchResults.length > 0 && (
-          <div className="space-y-2">
-            {searchResults.map((result) => (
-              <SongItem 
-                key={result.videoId}
-                result={result}
-                isSignedIn={isSignedIn}
-                isFavorite={isFavorite}
-                handleFavoriteToggle={handleFavoriteToggle}
-                handlePlaySong={handlePlaySong}
-              />
-            ))}
-          </div>
-        ))}
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div
+              key="loading"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="space-y-4"
+            >
+              {[...Array(7)].map((_, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="glass-card p-4 flex items-center gap-4"
+                >
+                  <div className="w-14 h-14 shimmer rounded-lg" />
+                  <div className="flex-grow space-y-2">
+                    <div className="h-4 w-3/4 shimmer rounded" />
+                    <div className="h-3 w-1/2 shimmer rounded" />
+                  </div>
+                  <div className="w-8 h-8 shimmer rounded-full" />
+                </motion.div>
+              ))}
+            </motion.div>
+          ) : error ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-12"
+            >
+              <div className="w-20 h-20 mx-auto mb-4 bg-red-500/20 rounded-full flex items-center justify-center">
+                <Music className="text-red-500 w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">Đã xảy ra lỗi</h2>
+              <p className="text-gray-400">{error}</p>
+            </motion.div>
+          ) : searchResults.length > 0 ? (
+            <motion.div
+              key="results"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-white">
+                  Kết quả cho "{queryParam}"
+                </h2>
+                <span className="text-sm text-gray-400">
+                  {searchResults.length} bài hát
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {searchResults.map((result, index) => {
+                  const song: Song = {
+                    id: result.videoId,
+                    title: result.name,
+                    artist: result.artist.name,
+                    albumArt: getLargestAlbumArt(result.thumbnails)?.url || '/placeholder-album.png',
+                    duration: result.duration
+                  };
+                  
+                  return (
+                    <motion.div
+                      key={result.videoId}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                    >
+                      <SongItem 
+                        song={song}
+                        index={index}
+                      />
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center py-16"
+            >
+              <div className="w-24 h-24 mx-auto mb-6 bg-gradient-to-br from-primary-500/20 to-accent-500/20 rounded-full flex items-center justify-center">
+                <SearchIcon className="text-gray-500 w-10 h-10" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-2">
+                Tìm kiếm bài hát
+              </h2>
+              <p className="text-gray-400 max-w-md mx-auto">
+                Nhập tên bài hát hoặc nghệ sĩ để bắt đầu tìm kiếm
+              </p>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Media Player */}
-      {/* <MediaPlayer /> */}
-
-      {/* Navigation */}
-      {/* <Navigation /> */}
     </div>
   );
 }

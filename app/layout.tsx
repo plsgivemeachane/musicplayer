@@ -1,19 +1,21 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { PlayerProvider } from './context/PlayerContext'
-import { QueueProvider } from './context/QueueContext'
-import { ClerkProvider } from '@clerk/nextjs'
-import LayoutContent from './components/LayoutContent'
-import { Analytics } from "@vercel/analytics/react"
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { PlayerProvider } from './context/PlayerContext';
+import { QueueProvider } from './context/QueueContext';
+import { ClerkProvider } from '@clerk/nextjs';
+import LayoutContent from './components/LayoutContent';
+import { Analytics } from "@vercel/analytics/react";
 
-const inter = Inter({ subsets: ['latin'] })
-import type { Viewport } from "next";
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-inter'
+});
 
 const APP_NAME = "Looped";
 const APP_DEFAULT_TITLE = "Looped App";
 const APP_TITLE_TEMPLATE = "%s - App";
-const APP_DESCRIPTION = "Looped App";
+const APP_DESCRIPTION = "Looped App - Nghe nhạc không gián đoạn";
 
 export const metadata: Metadata = {
   applicationName: APP_NAME,
@@ -25,9 +27,8 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
     title: APP_DEFAULT_TITLE,
-    // startUpImage: [],
   },
   formatDetection: {
     telephone: false,
@@ -52,16 +53,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#00FFFF",
-};export default function RootLayout({
+  themeColor: "#8b5cf6",
+};
+
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
     <ClerkProvider>
-      <html lang="vi">
-        <body className={`${inter.className} bg-black text-white`}>
+      <html lang="vi" className="dark">
+        <body className={`${inter.variable} font-sans antialiased`}>
           <PlayerProvider>
             <QueueProvider>
               <LayoutContent>{children}</LayoutContent>
@@ -71,5 +74,5 @@ export const viewport: Viewport = {
         </body>
       </html>
     </ClerkProvider>
-  )
+  );
 }

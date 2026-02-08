@@ -1,286 +1,253 @@
 'use client'
-import { openDB } from 'idb';
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { FaPlay, FaPause, FaStepBackward, FaStepForward, FaHeart, FaRegHeart, FaVolumeUp, FaVolumeDown, FaVolumeMute, FaVolumeOff } from 'react-icons/fa';
+
 import { usePlayer } from '../context/PlayerContext';
 import { useQueue } from '../context/QueueContext';
-import { useFavorites } from '../hooks/useFavorites';
-import { motion } from "framer-motion"
+import { motion } from 'framer-motion';
+import { 
+  Play, Pause, SkipBack, SkipForward, Volume2, 
+  Repeat, Shuffle, ListMusic, Heart, VolumeX
+} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
-import { pb } from '@/lib/pocketbase';
-import { songBlobProcessor } from '../utils/songBlobProcessor';
-import { PiKeyReturnBold } from 'react-icons/pi';
+import { useFavorites } from '../hooks/useFavorites';
 
-interface Song {
-  id: string;
-  title: string;
-  artist: string;
-  duration: number;
-  albumArt?: string;
-}
-
-export default function MediaPlayer() {
+export function MediaPlayer() {
   const { 
     currentSong, 
     isPlaying, 
     togglePlayPause,
-    playSong
+    playSong 
   } = usePlayer();
   const { 
     nextSong, 
-    prevSong,
-    queue
+    prevSong, 
+    isLooping, 
+    isShufflings, 
+    setLooping, 
+    setShuffling,
+    queue 
   } = useQueue();
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const { isLoaded, isSignedIn, user } = useUser();
   const router = useRouter();
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const { isSignedIn } = useUser();
+  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const [volume, setVolume] = useState(1);
+  const [previousVolume, setPreviousVolume] = useState(1);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Prevent duplicate processing
-  const [processingUrls, setProcessingUrls] = useState<Set<string>>(new Set());
-
-  // Fetch and cache song URL as blob
-  const getSongBlobUrl = useCallback(async (song: Song, prefetchNext: boolean = true) => {
-    // Attempt to fetch song URL as blob, and cache it
-    // If successful, return the blob URL
-    // If failed, return undefined
-    return songBlobProcessor.getSongBlobUrl(song, {
-      processingUrls,
-      setProcessingUrls,
-      nextSong,
-      prefetchNext
-    });
-  }, [processingUrls, nextSong]);
-
-    // audio.play();
-  // Attempt to play with auto-retry
-  const MAX_RETRIES = 15;
-  const RETRY_DELAY = 1000; // 1 second between retries
-
-  const attemptPlay = async (audio: any, retryCount = 0) => {
-    try {
-      // Attempt to play the audio
-      if (isPlaying) {
-        await audio.play();
-      }
-    } catch (error) {
-      // If playback fails, log the error and retry after a delay
-      console.error(`Playback error (Attempt ${retryCount + 1}):`, error);
-      await audio.load();
-      if (retryCount < MAX_RETRIES) {
-        setTimeout(() => {
-          attemptPlay(audio, retryCount + 1);
-        }, RETRY_DELAY);
-      } else {
-        console.error('Max retries reached. Unable to play song.');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const existingAudio = document.querySelector('audio') as HTMLAudioElement;
+      if (existingAudio) {
+        setAudioElement(existingAudio);
+        audioRef.current = existingAudio;
       }
     }
-  };
+  }, [currentSong]);
 
-  const [volume, setVolume] = useState(() => {
-    // Initialize volume from localStorage, default to 1 if not set
-    const savedVolume = localStorage.getItem('musicPlayerVolume');
-    return savedVolume ? parseFloat(savedVolume) : 1;
-  });
+  useEffect(() => {
+    if (audioElement) {
+      audioElement.volume = volume;
+    }
+  }, [volume, audioElement]);
+
+  useEffect(() => {
+    if (audioElement) {
+      if (isPlaying) {
+        audioElement.play().catch(console.error);
+      } else {
+        audioElement.pause();
+      }
+    }
+  }, [isPlaying, audioElement]);
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    // Save volume to localStorage
+    setPreviousVolume(newVolume);
     localStorage.setItem('musicPlayerVolume', newVolume.toString());
-    if (audioRef.current) {
-      audioRef.current.volume = newVolume;
-    }
   };
 
   const toggleMute = () => {
-    if (audioRef.current) {
-      audioRef.current.muted = !audioRef.current.muted;
-      const newVolume = audioRef.current.muted ? 0 : 1;
-      setVolume(newVolume);
-      // Save volume to localStorage
-      localStorage.setItem('musicPlayerVolume', newVolume.toString());
-    }
-  };
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    // Set up audio element error handler
-    audio.onpause = () => {
-      if(!isPlaying) return;
-      console.error('Error loading audio:', audio.error);
-      attemptPlay(audio)
-    };
-
-  }, [audioRef, isPlaying])
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio && currentSong) {
-      const setupAudio = async () => {
-        // Attempt to fetch song URL as blob, and cache it
-        const blobUrl = await getSongBlobUrl(currentSong, true);
-
-        console.log(blobUrl)
-        
-        // Set the audio source to blob URL
-        audio.src = blobUrl;
-        // audio.load();
-
-        // Set up audio element ended handler
-        audio.onended = () => {
-          console.log("Ended")
-          const nextTrack = nextSong();
-          if (nextTrack) {
-            playSong(nextTrack);
-          }
-        };
-        attemptPlay(audio);
-      };
-
-      setupAudio();
-    }
-  }, [currentSong?.id, playSong]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      if (isPlaying) {
-        attemptPlay(audio);
+    if (audioElement) {
+      if (audioElement.muted) {
+        audioElement.muted = false;
+        setVolume(previousVolume > 0 ? previousVolume : 1);
       } else {
-        audio.pause();
+        audioElement.muted = true;
+        setPreviousVolume(volume);
+        setVolume(0);
       }
     }
-  }, [isPlaying]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.volume = volume;
-    }
-  }, [volume]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if ('mediaSession' in navigator && audio && currentSong) {
-      // Update Media Session metadata
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: currentSong.title,
-        artist: currentSong.artist,
-        artwork: currentSong.albumArt 
-          ? [{ src: currentSong.albumArt, sizes: '96x96', type: 'image/png' }]
-          : [{ src: '/placeholder-album.png', sizes: '96x96', type: 'image/png' }]
-      });
-
-      // Add media session action handlers
-      navigator.mediaSession.setActionHandler('play', () => {
-        if (audio.paused) togglePlayPause();
-      });
-
-      navigator.mediaSession.setActionHandler('pause', () => {
-        if (!audio.paused) togglePlayPause();
-      });
-
-      navigator.mediaSession.setActionHandler('previoustrack', () => {
-        prevSong();
-      });
-
-      navigator.mediaSession.setActionHandler('nexttrack', () => {
-        nextSong();
-      });
-
-      // Update playback state
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-    }
-  }, [currentSong, prevSong, nextSong, isPlaying]);
-
-  useEffect(() => {
-    const cleanupInterval = setInterval(() => {
-      // blobStorage.cleanupExpiredBlobs();
-    }, 24 * 60 * 60 * 1000); // Daily cleanup
-
-    return () => clearInterval(cleanupInterval);
-  }, []);
-
-  const handleFavoriteToggle = () => {
-    if (!currentSong) return;
-
-    if (isFavorite(currentSong.id)) {
-      removeFromFavorites(currentSong.id);
-    } else {
-      addToFavorites(currentSong);
-    }
   };
 
-  if (!currentSong) return null;
-  if (!isLoaded) return null;
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  if (!currentSong) {
+    return null;
+  }
 
   return (
-    <motion.div 
-      initial={{ scale: 0 }} 
-      animate={{ scale: 1 }} 
-      className="fixed bottom-20 left-4 sm:left-12 right-4 sm:right-12 bg-black/80 backdrop-blur-md rounded-xl p-4 z-40"
-      // whileHover={{ scale: 1.05 }}
-      onMouseEnter={() => router.prefetch('/player')}
-      onClick={() => router.push('/player')}
+    <motion.div
+      initial={{ y: 100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      className="fixed bottom-0 left-0 right-0 bg-gray-900/95 backdrop-blur-xl border-t border-white/5 z-40"
     >
-      <audio ref={audioRef} />
-      
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <img 
-            src={currentSong.albumArt || '/placeholder-album.png'} 
-            alt={"Loi anh"} 
-            width={48} 
-            height={48} 
-            className="rounded-md"
-          />
-          <div>
-            <p className="text-sm font-semibold truncate max-w-[150px]">{currentSong.title}</p>
-            <p className="text-xs text-neutral-400 truncate max-w-[150px]">{currentSong.artist}</p>
+      <div className="max-w-screen-2xl mx-auto">
+        <div className="flex items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-4 flex-1 min-w-0">
+            <img 
+              src={currentSong.albumArt || '/placeholder-album.png'} 
+              alt={currentSong.title}
+              className="w-14 h-14 rounded-lg object-cover shadow-lg cursor-pointer"
+              onClick={() => router.push('/player')}
+            />
+            
+            <div className="min-w-0 flex-grow hidden md:block">
+              <h4 
+                className="font-semibold text-white truncate cursor-pointer hover:text-primary-400 transition-colors"
+                onClick={() => router.push('/player')}
+              >
+                {currentSong.title}
+              </h4>
+              <p className="text-sm text-gray-400 truncate">{currentSong.artist}</p>
+            </div>
+
+            {isSignedIn && (
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (isFavorite(currentSong.id)) {
+                    removeFromFavorites(currentSong.id);
+                  } else {
+                    addToFavorites(currentSong);
+                  }
+                }}
+                className={`hidden sm:block transition-colors ${isFavorite(currentSong.id) ? 'text-rose-500' : 'text-gray-400 hover:text-white'}`}
+              >
+                <Heart className={`w-5 h-5 ${isFavorite(currentSong.id) ? 'fill-current' : ''}`} />
+              </motion.button>
+            )}
           </div>
-          {isSignedIn && <button 
-            onClick={handleFavoriteToggle}
-            className="text-red-500 hover:text-red-400 transition-colors"
-          >
-            {isFavorite(currentSong.id) ? <FaHeart size={20} /> : <FaRegHeart size={20} />}
-          </button>}
+
+          <div className="flex flex-col items-center gap-2 flex-1">
+            <div className="flex items-center gap-4">
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShuffling(!isShufflings)}
+                className={`hidden sm:block icon-btn ${isShufflings ? 'active' : ''}`}
+              >
+                <Shuffle className="w-4 h-4" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const prevTrack = prevSong();
+                  if (prevTrack) {
+                    playSong(prevTrack);
+                  }
+                }}
+                className="icon-btn text-gray-400 hover:text-white"
+              >
+                <SkipBack className="w-5 h-5" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={togglePlayPause}
+                className="w-10 h-10 bg-gradient-to-r from-primary-500 to-accent-500 rounded-full flex items-center justify-center shadow-glow"
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 text-white" />
+                ) : (
+                  <Play className="w-5 h-5 text-white ml-0.5" />
+                )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  const nextTrack = nextSong();
+                  if (nextTrack) {
+                    playSong(nextTrack);
+                  }
+                }}
+                className="icon-btn text-gray-400 hover:text-white"
+              >
+                <SkipForward className="w-5 h-5" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setLooping(!isLooping)}
+                className={`hidden sm:block icon-btn ${isLooping ? 'active' : ''}`}
+              >
+                <Repeat className="w-4 h-4" />
+              </motion.button>
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-3 flex-1 justify-end">
+            <button 
+              onClick={toggleMute}
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              {volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </button>
+            
+            <div className="w-24 h-1.5 bg-gray-700/50 rounded-full overflow-hidden cursor-pointer group">
+              <div 
+                className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full transition-all duration-100"
+                style={{ width: `${volume * 100}%` }}
+              />
+              <input 
+                type="range" 
+                min="0" 
+                max="1" 
+                step="0.01" 
+                value={volume} 
+                onChange={handleVolumeChange} 
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              prevSong();
+        <div 
+          className="h-1 bg-gray-800 cursor-pointer group"
+          onClick={(e) => {
+            if (audioElement) {
+              const rect = e.currentTarget.getBoundingClientRect();
+              const percent = (e.clientX - rect.left) / rect.width;
+              audioElement.currentTime = percent * (audioElement.duration || 0);
+            }
+          }}
+        >
+          <div 
+            className="h-full bg-gradient-to-r from-primary-500 to-accent-500 rounded-full relative"
+            style={{ 
+              width: audioElement 
+                ? `${(audioElement.currentTime / (audioElement.duration || 1)) * 100}%` 
+                : '0%'
             }}
-            className="text-neutral-400 hover:text-white hidden sm:block"
           >
-            <FaStepBackward size={20} />
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              togglePlayPause();
-            }}
-            className="text-white"
-          >
-            {isPlaying ? <FaPause size={24} /> : <FaPlay size={24} />}
-          </button>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              nextSong();
-            }}
-            className="text-neutral-400 hover:text-white  hidden sm:block"
-          >
-            <FaStepForward size={20} />
-          </button>
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
         </div>
-    </div>
+      </div>
     </motion.div>
   );
 }
