@@ -2,14 +2,15 @@
 
 import Image from "next/image";
 import { useState, useEffect, Suspense } from 'react';
-import { FaPlay, FaPause, FaHeart, FaPlus, FaSearch, FaRegHeart } from 'react-icons/fa';
+import { FaPlay, FaPause, FaHeart, FaPlus, FaSearch, FaRegHeart, FaArrowLeft } from 'react-icons/fa';
 import { useSearchParams } from 'next/navigation';
 import { usePlayer } from "../context/PlayerContext";
 import { useQueue } from '../context/QueueContext';
 import { useRouter } from 'next/navigation';
 import MediaPlayer from '../components/MediaPlayer';
 import Navigation from '../components/Navigation';
-import { motion } from "motion/react"
+import BioluminescentBackground from '../components/BioluminescentBackground';
+import { motion } from "framer-motion";
 import { Song } from '../types/song';
 import { useFavorites } from '../hooks/useFavorites';
 import { useUser } from "@clerk/nextjs";
@@ -18,274 +19,322 @@ import { SongItem } from '../components/SongItem';
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
 interface SearchResult {
-  type: string;
-  videoId: string;
-  name: string;
-  artist: {
-    name: string;
-    artistId: string;
-  };
-  album: {
-    name: string;
-    albumId: string;
-  };
-  duration: number;
-  thumbnails: Array<{
-    url: string;
-    width: number;
-    height: number;
-  }>;
+	type: string;
+	videoId: string;
+	name: string;
+	artist: {
+		name: string;
+		artistId: string;
+	};
+	album: {
+		name: string;
+		albumId: string;
+	};
+	duration: number;
+	thumbnails: Array<{
+		url: string;
+		width: number;
+		height: number;
+	}>;
 }
 
 export default function SearchPage() {
-  return (
-    <Suspense fallback={<div>Chờ...</div>}>
-      <Search />
-    </Suspense>
-  );
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen bg-carbon flex items-center justify-center">
+				<div className="flex flex-col items-center gap-4">
+					<div className="w-12 h-12 rounded-full border-2 border-iron border-t-emerald animate-spin" />
+					<p className="font-sans text-ash text-sm">Đang tải...</p>
+				</div>
+			</div>
+		}>
+			<Search />
+		</Suspense>
+	);
 }
 
 function Search() {
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [query, setQuery] = useState('');
-  const [nestedSearchQuery, setNestedSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+	const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+	const [query, setQuery] = useState('');
+	const [nestedSearchQuery, setNestedSearchQuery] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 
-  const searchParams = useSearchParams();
-  const queryParam = searchParams.get('query') || '';
-  const { playSong } = usePlayer();
-  const { addToQueue } = useQueue();
-  const router = useRouter();
-  const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
-  const { isLoaded, isSignedIn, user } = useUser();
+	const searchParams = useSearchParams();
+	const queryParam = searchParams.get('query') || '';
+	const { playSong, currentSong, isPlaying } = usePlayer();
+	const { addToQueue } = useQueue();
+	const router = useRouter();
+	const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+	const { isLoaded, isSignedIn, user } = useUser();
 
-  useEffect(() => {
-    const fetchSearchResults = async () => {
-      if (!queryParam) return;
+	useEffect(() => {
+		const fetchSearchResults = async () => {
+			if (!queryParam) return;
 
-      setIsLoading(true);
-      setError(null);
+			setIsLoading(true);
+			setError(null);
 
-      try {
-        console.log('Fetching search results for query:', queryParam);
-        const fullUrl = `${BASE_URL}/v1/youtube/search?query=${encodeURIComponent(queryParam)}`;
-        console.log('Full URL:', fullUrl);
+			try {
+				const fullUrl = `${BASE_URL}/v1/youtube/search?query=${encodeURIComponent(queryParam)}`;
+				const response = await fetch(fullUrl, {
+					method: 'GET',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					cache: "force-cache"
+				});
 
-        const response = await fetch(fullUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          cache: "force-cache" // Because the song list is static
-        });
-        
-        console.log('Response status:', response.status);
-        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+				if (!response.ok) {
+					const errorData = await response.json();
+					throw new Error(errorData.error || 'Failed to fetch songs');
+				}
 
-        if (!response.ok) {
-          // Handle HTTP errors
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch songs');
-        }
+				const data: SearchResult[] = await response.json();
 
-        const data: SearchResult[] = await response.json();
+				if (data.length === 0) {
+					router.push('/no-songs');
+					return;
+				}
 
-        if (data.length === 0) {
-          // Redirect to no songs page
-          router.push('/no-songs');
-          return;
-        }
+				setSearchResults(data);
+			} catch (err) {
+				console.error('Search error:', err);
+				router.push('/no-songs');
+			} finally {
+				setIsLoading(false);
+			}
+		};
 
-        setSearchResults(data);
-      } catch (err) {
-        // Log the error for debugging
-        console.error('Search error:', err);
-        
-        // Redirect to no songs page on any error
-        router.push('/no-songs');
-      } finally {
-        setIsLoading(false);
-      }
-    };
+		fetchSearchResults();
+	}, [queryParam]);
 
-    fetchSearchResults();
-  }, [queryParam]);
+	const getLargestAlbumArt = (thumbnails: SearchResult['thumbnails']) => {
+		if (thumbnails.length > 0) {
+			return thumbnails.reduce((largest, thumbnail) => {
+				if (thumbnail.width > largest.width) {
+					return thumbnail;
+				}
+				return largest;
+			});
+		}
+		return null;
+	};
 
-  const getLargestAlbumArt = (thumbnails: SearchResult['thumbnails']) => {
-    if (thumbnails.length > 0) {
-      return thumbnails.reduce((largest, thumbnail) => {
-        if (thumbnail.width > largest.width) {
-          return thumbnail;
-        }
-        return largest;
-      });
-    }
-    return null;
-  };
+	const handlePlaySong = (result: SearchResult) => {
+		const song: Song = {
+			id: result.videoId,
+			title: result.name,
+			artist: result.artist.name,
+			albumArt: getLargestAlbumArt(result.thumbnails)?.url || '/placeholder-album.png',
+			duration: result.duration
+		};
 
-  const handlePlaySong = (result: SearchResult) => {
-    // Convert SearchResult to Song
-    const song: Song = {
-      id: result.videoId,
-      title: result.name,
-      artist: result.artist.name,
-      albumArt: getLargestAlbumArt(result.thumbnails)?.url || '/placeholder-album.png',
-      duration: result.duration
-    };
+		const queueSongs: Song[] = searchResults.map(r => ({
+			id: r.videoId,
+			title: r.name,
+			artist: r.artist.name,
+			albumArt: getLargestAlbumArt(r.thumbnails)?.url || '/placeholder-album.png',
+			duration: r.duration
+		}));
 
-    // Add all search results to queue
-    const queueSongs: Song[] = searchResults.map(r => ({
-      id: r.videoId,
-      title: r.name,
-      artist: r.artist.name,
-      albumArt: getLargestAlbumArt(r.thumbnails)?.url || '/placeholder-album.png',
-      duration: r.duration
-    }));
+		const currentSongIndex = queueSongs.findIndex(song => song.id === result.videoId);
+		addToQueue(queueSongs, currentSongIndex);
+		playSong(song);
+	};
 
-    // Find the index of the current song in the queue
-    const currentSongIndex = queueSongs.findIndex(song => song.id === result.videoId);
+	const handleFavoriteToggle = (result: SearchResult) => {
+		const song: Song = {
+			id: result.videoId,
+			title: result.name,
+			artist: result.artist.name,
+			albumArt: result.thumbnails[0]?.url,
+			duration: result.duration
+		};
 
-    addToQueue(queueSongs, currentSongIndex);
-    
-    // Play the selected song
-    playSong(song);
-  };
+		if (isFavorite(song.id)) {
+			removeFromFavorites(song.id);
+		} else {
+			addToFavorites(song);
+		}
+	};
 
-  const handleFavoriteToggle = (result: SearchResult) => {
-    // Convert SearchResult to Song
-    const song: Song = {
-      id: result.videoId,
-      title: result.name,
-      artist: result.artist.name,
-      albumArt: result.thumbnails[0]?.url,
-      duration: result.duration
-    };
+	const handleSearch = () => {
+		if (nestedSearchQuery.trim()) {
+			router.push(`/search?query=${encodeURIComponent(nestedSearchQuery)}`);
+		}
+	};
 
-    if (isFavorite(song.id)) {
-      removeFromFavorites(song.id);
-    } else {
-      addToFavorites(song);
-    }
-  };
+	const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (e.key === 'Enter') {
+			handleSearch();
+		}
+	};
 
-  const handleSearch = () => {
-    if (nestedSearchQuery.trim()) {
-      router.push(`/search?query=${encodeURIComponent(nestedSearchQuery)}`);
-    }
-  };
+	if (error) {
+		return (
+			<div className="min-h-screen bg-carbon p-4">
+				<div className="max-w-md mx-auto">
+					<div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
+						<p className="text-red-400 font-sans">Lỗi: {error}</p>
+					</div>
+				</div>
+			</div>
+		);
+	}
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
+	if (!isLoaded) {
+		return (
+			<div className="min-h-screen bg-carbon flex items-center justify-center">
+				<div className="flex flex-col items-center gap-4">
+					<div className="w-12 h-12 rounded-full border-2 border-iron border-t-emerald animate-spin" />
+					<p className="font-sans text-ash text-sm">Đang tải...</p>
+				</div>
+			</div>
+		);
+	}
 
-  const formatDuration = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
-  };
+	const containerVariants = {
+		hidden: { opacity: 0 },
+		visible: {
+			opacity: 1,
+			transition: { staggerChildren: 0.05 }
+		}
+	};
 
-  // if (isLoading) {
-  //   return (
-  //     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black text-white min-h-screen flex items-center justify-center">
-  //       <p>Đang tải...</p>
-  //     </motion.div>
-  //   );
-  // }
+	const itemVariants = {
+		hidden: { opacity: 0, y: 10 },
+		visible: { opacity: 1, y: 0 }
+	};
 
-  if (error) {
-    return (
-      <div className="bg-black text-white min-h-screen p-4">
-        <p className="text-red-500">Lỗi!: {error}</p>
-      </div>
-    );
-  }
+	return (
+		<div className="min-h-screen bg-carbon relative">
+			<BioluminescentBackground orbCount={2} intensity="low" />
+			
+			{/* Main Content */}
+			<div className="relative z-10 max-w-md mx-auto px-4 pt-6 pb-32">
+				{/* Header with back button */}
+				<div className="flex items-center gap-3 mb-6">
+					<motion.button
+						whileTap={{ scale: 0.95 }}
+						onClick={() => router.push('/')}
+						className="w-10 h-10 rounded-full bg-concrete border border-iron
+							flex items-center justify-center
+							text-silver hover:text-snow hover:border-emerald
+							transition-all duration-200"
+					>
+						<FaArrowLeft size={16} />
+					</motion.button>
+					
+					<div className="flex-1">
+						<h1 className="font-serif text-2xl text-snow">Tìm kiếm</h1>
+					</div>
+				</div>
 
-  if(!isLoaded) {
-    return (
-      <div className="bg-black text-white min-h-screen p-4">
-        <p>Đang tải...</p>
-      </div>
-    )
-  }
+				{/* Search Input */}
+				<motion.div 
+					initial={{ opacity: 0, y: -10 }}
+					animate={{ opacity: 1, y: 0 }}
+					className="mb-6"
+				>
+					<div className="relative">
+						<input 
+							type="text" 
+							placeholder="Bài hát, nghệ sĩ, album..." 
+							value={nestedSearchQuery}
+							onChange={(e) => setNestedSearchQuery(e.target.value)}
+							onKeyDown={handleKeyDown}
+							className="w-full bg-concrete text-snow px-4 py-3 pl-12 rounded-lg 
+								border border-iron
+								focus:outline-none focus:border-emerald focus:shadow-glow-sm
+								placeholder:text-ash
+								transition-all duration-200"
+						/>
+						<FaSearch 
+							className="absolute left-4 top-1/2 -translate-y-1/2 text-ash cursor-pointer hover:text-mint transition-colors"
+							onClick={handleSearch}
+						/>
+					</div>
+				</motion.div>
 
-  return (
-    <div className="bg-black text-white min-h-screen p-4">
-      {/* Main Content */}
-      <div className="max-w-md mx-auto">
-        {/* Top Bar */}
-        <div className="flex flex-col justify-between items-center mb-8">
-          <div className="flex flex-col space-y-4 items-center w-full">
-            {/* Search Input */}
-            <div className="relative w-full">
-              <input 
-                type="text" 
-                placeholder="Search" 
-                value={nestedSearchQuery}
-                onChange={(e) => setNestedSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="bg-neutral-800 text-white px-4 py-2 pl-10 rounded-full w-full focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-              <FaSearch 
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 cursor-pointer"
-                onClick={handleSearch}
-              />
-            </div>
-          </div>
-        </div>
+				{/* Results Section */}
+				{isLoading ? (
+					<motion.div
+						variants={containerVariants}
+						initial="hidden"
+						animate="visible"
+						className="space-y-3"
+					>
+						{[...Array(7).keys()].map((i) => (
+							<motion.div
+								key={i}
+								variants={itemVariants}
+								className="bg-concrete rounded-lg p-3 border border-iron"
+							>
+								<div className="flex items-center gap-3">
+									{/* Shimmer album art placeholder */}
+									<div className="w-12 h-12 rounded-md bg-slate shimmer" />
+									<div className="flex-1 space-y-2">
+										<div className="h-4 bg-slate rounded shimmer w-3/4" />
+										<div className="h-3 bg-slate rounded shimmer w-1/2" />
+									</div>
+								</div>
+							</motion.div>
+						))}
+					</motion.div>
+				) : searchResults.length > 0 ? (
+					<>
+						{/* Results count */}
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							className="mb-4"
+						>
+							<p className="font-sans text-xs text-ash uppercase tracking-wider">
+								{searchResults.length} kết quả cho "{queryParam}"
+							</p>
+						</motion.div>
 
-        {/* Search Results */}
-        {isLoading ? (
-          <div className="space-y-2">
-            {[...Array(7).keys()].map((i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: i * 0.1 }}
-                className="bg-neutral-900 rounded-md p-2 flex items-center space-x-4"
-              >
-                <div className="bg-neutral-800 rounded-md h-12 w-12"></div>
-                <div className="flex-grow overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.3, delay: i * 0.1 }}
-                    className="bg-neutral-800 rounded-md h-6"
-                  ></motion.div>
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: '100%' }}
-                    transition={{ duration: 0.3, delay: i * 0.1 + 0.2 }}
-                    className="bg-neutral-800 rounded-md h-4 mt-2"
-                  ></motion.div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        ) : (searchResults.length > 0 && (
-          <div className="space-y-2">
-            {searchResults.map((result) => (
-              <SongItem 
-                key={result.videoId}
-                result={result}
-                isSignedIn={isSignedIn}
-                isFavorite={isFavorite}
-                handleFavoriteToggle={handleFavoriteToggle}
-                handlePlaySong={handlePlaySong}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
+						{/* Results list */}
+						<motion.div
+							variants={containerVariants}
+							initial="hidden"
+							animate="visible"
+							className="space-y-2"
+						>
+							{searchResults.map((result, index) => (
+								<motion.div key={result.videoId} variants={itemVariants}>
+									<SongItem 
+										result={result}
+										isSignedIn={isSignedIn}
+										isFavorite={isFavorite}
+										handleFavoriteToggle={handleFavoriteToggle}
+										handlePlaySong={handlePlaySong}
+									/>
+								</motion.div>
+							))}
+						</motion.div>
+					</>
+				) : (
+					/* Empty state */
+					<motion.div
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						className="flex flex-col items-center justify-center py-16 text-center"
+					>
+						<div className="w-16 h-16 rounded-full bg-slate flex items-center justify-center mb-4">
+							<FaSearch size={24} className="text-ash" />
+						</div>
+						<p className="font-sans text-silver mb-1">Không có kết quả</p>
+						<p className="font-sans text-sm text-ash">
+							Thử tìm kiếm với từ khóa khác
+						</p>
+					</motion.div>
+				)}
+			</div>
 
-      {/* Media Player */}
-      {/* <MediaPlayer /> */}
-
-      {/* Navigation */}
-      {/* <Navigation /> */}
-    </div>
-  );
+			<MediaPlayer />
+			<Navigation />
+		</div>
+	);
 }

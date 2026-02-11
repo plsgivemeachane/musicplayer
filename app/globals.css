@@ -2,21 +2,359 @@
 @tailwind components;
 @tailwind utilities;
 
-/* :root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ============================================
+   VERDANT STEEL DESIGN SYSTEM
+   ============================================ */
+
+:root {
+	/* Background Layer */
+	--color-void: #08080A;
+	--color-carbon: #0D0D0F;
+	--color-concrete: #16161A;
+	--color-slate: #1E1E24;
+	
+	/* Text Layer */
+	--color-snow: #FAFAFA;
+	--color-silver: #A1A1AA;
+	--color-ash: #71717A;
+	--color-charcoal: #3F3F46;
+	
+	/* Green Accent System */
+	--color-mint: #4ADE80;
+	--color-emerald: #22C55E;
+	--color-forest: #16A34A;
+	--color-moss: #15803D;
+	--color-pine: #14532D;
+	
+	/* Gray Accent System */
+	--color-steel: #64748B;
+	--color-zinc: #475569;
+	--color-iron: #334155;
+	
+	/* Gradients */
+	--gradient-glow: linear-gradient(135deg, #4ADE80 0%, #22C55E 50%, #16A34A 100%);
+	--gradient-depth: linear-gradient(180deg, #08080A 0%, #0D0D0F 50%, #16161A 100%);
+	--gradient-card: linear-gradient(145deg, #1E1E24 0%, #16161A 100%);
+	--gradient-text: linear-gradient(90deg, #4ADE80 0%, #22C55E 100%);
+	
+	/* Shadows */
+	--shadow-glow-sm: 0 0 8px rgba(74, 222, 128, 0.3);
+	--shadow-glow-md: 0 0 16px rgba(74, 222, 128, 0.4);
+	--shadow-glow-lg: 0 0 24px rgba(74, 222, 128, 0.5);
+	--shadow-lift: 0 4px 12px rgba(0, 0, 0, 0.4);
+	--shadow-lift-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+	
+	/* Animation Timing */
+	--duration-fast: 150ms;
+	--duration-normal: 250ms;
+	--duration-slow: 400ms;
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-} */
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+* {
+	box-sizing: border-box;
+}
+
+html {
+	scroll-behavior: smooth;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
 
 body {
-  /* color: var(--foreground); */
-  /* background: var(--background); */
-  /* font-family: Arial, Helvetica, sans-serif; */
-  overscroll-behavior-y: contain;
+	background: var(--color-carbon);
+	color: var(--color-snow);
+	font-family: var(--font-outfit), system-ui, sans-serif;
+	overscroll-behavior-y: contain;
+	min-height: 100vh;
+	position: relative;
+}
+
+/* Noise texture overlay */
+body::before {
+	content: '';
+	position: fixed;
+	inset: 0;
+	background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+	opacity: 0.03;
+	pointer-events: none;
+	z-index: 0;
+	mix-blend-mode: overlay;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   ============================================ */
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: var(--font-instrument-serif), Georgia, serif;
+	font-weight: 400;
+	letter-spacing: -0.02em;
+}
+
+.font-gradient {
+	background: var(--gradient-text);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+/* ============================================
+   CUSTOM SCROLLBAR
+   ============================================ */
+
+::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+
+::-webkit-scrollbar-track {
+	background: var(--color-carbon);
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--color-emerald);
+	border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+	background: var(--color-mint);
+}
+
+/* Firefox */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: var(--color-emerald) var(--color-carbon);
+}
+
+/* ============================================
+   FOCUS STATES (Accessibility)
+   ============================================ */
+
+:focus-visible {
+	outline: 2px solid var(--color-mint);
+	outline-offset: 2px;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+	outline: 2px solid var(--color-mint);
+	outline-offset: 2px;
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+@layer utilities {
+	/* Glass effect */
+	.glass {
+		background: rgba(30, 30, 36, 0.8);
+		backdrop-filter: blur(12px);
+		-webkit-backdrop-filter: blur(12px);
+	}
+	
+	/* Glow effects */
+	.glow-sm {
+		box-shadow: var(--shadow-glow-sm);
+	}
+	
+	.glow-md {
+		box-shadow: var(--shadow-glow-md);
+	}
+	
+	.glow-lg {
+		box-shadow: var(--shadow-glow-lg);
+	}
+	
+	/* Hover lift effect */
+	.hover-lift {
+		transition: transform var(--duration-normal) var(--ease-out),
+		            box-shadow var(--duration-normal) var(--ease-out);
+	}
+	
+	.hover-lift:hover {
+		transform: translateY(-2px);
+		box-shadow: var(--shadow-lift);
+	}
+	
+	/* Green underline animation */
+	.underline-glow {
+		position: relative;
+	}
+	
+	.underline-glow::after {
+		content: '';
+		position: absolute;
+		bottom: 0;
+		left: 0;
+		width: 0;
+		height: 2px;
+		background: var(--gradient-glow);
+		transition: width var(--duration-normal) var(--ease-out);
+	}
+	
+	.underline-glow:hover::after {
+		width: 100%;
+	}
+	
+	/* Shimmer loading effect */
+	.shimmer {
+		background: linear-gradient(
+			90deg,
+			var(--color-slate) 0%,
+			var(--color-concrete) 50%,
+			var(--color-slate) 100%
+		);
+		background-size: 200% 100%;
+		animation: shimmer 2s linear infinite;
+	}
+	
+	/* Text truncation */
+	.truncate-2 {
+		display: -webkit-box;
+		-webkit-line-clamp: 2;
+		-webkit-box-orient: vertical;
+		overflow: hidden;
+	}
+	
+	/* Safe area padding for mobile */
+	.pb-safe {
+		padding-bottom: env(safe-area-inset-bottom, 0);
+	}
+	
+	.pt-safe {
+		padding-top: env(safe-area-inset-top, 0);
+	}
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+@keyframes pulse-glow {
+	0%, 100% {
+		box-shadow: 0 0 8px rgba(74, 222, 128, 0.3);
+		opacity: 1;
+	}
+	50% {
+		box-shadow: 0 0 16px rgba(74, 222, 128, 0.5);
+		opacity: 0.9;
+	}
+}
+
+@keyframes float {
+	0%, 100% {
+		transform: translateY(0px);
+	}
+	50% {
+		transform: translateY(-10px);
+	}
+}
+
+/* ============================================
+   REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		scroll-behavior: auto !important;
+	}
+	
+	body::before {
+		display: none;
+	}
+}
+
+/* ============================================
+   COMPONENT PRESETS
+   ============================================ */
+
+@layer components {
+	/* Card base */
+	.card {
+		background: var(--gradient-card);
+		border-radius: 8px;
+		border: 1px solid var(--color-iron);
+		transition: all var(--duration-normal) var(--ease-out);
+	}
+	
+	.card:hover {
+		border-color: var(--color-emerald);
+		box-shadow: var(--shadow-glow-sm);
+	}
+	
+	/* Button base */
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 0.625rem 1.25rem;
+		border-radius: 6px;
+		font-weight: 500;
+		transition: all var(--duration-fast) var(--ease-out);
+		cursor: pointer;
+	}
+	
+	.btn-primary {
+		background: var(--gradient-glow);
+		color: var(--color-void);
+	}
+	
+	.btn-primary:hover {
+		box-shadow: var(--shadow-glow-md);
+		transform: scale(1.02);
+	}
+	
+	.btn-secondary {
+		background: transparent;
+		border: 1px solid var(--color-steel);
+		color: var(--color-silver);
+	}
+	
+	.btn-secondary:hover {
+		border-color: var(--color-mint);
+		color: var(--color-mint);
+	}
+	
+	/* Input base */
+	.input {
+		background: var(--color-concrete);
+		border: 1px solid var(--color-iron);
+		border-radius: 4px;
+		padding: 0.625rem 1rem;
+		color: var(--color-snow);
+		transition: all var(--duration-fast) var(--ease-out);
+	}
+	
+	.input:focus {
+		outline: none;
+		border-color: var(--color-mint);
+		box-shadow: var(--shadow-glow-sm);
+	}
+	
+	.input::placeholder {
+		color: var(--color-ash);
+	}
 }
